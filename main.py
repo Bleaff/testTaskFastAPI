@@ -1,0 +1,33 @@
+from fastapi import FastAPI
+from DTF_API import DTF
+from fastapi.responses import JSONResponse
+
+serv = FastAPI()
+
+dtf = DTF(token = "79a24dbb2334b0a52a506db13f561cc006a6c2b52c12ed5ce2850eb5dd86a583")
+
+@serv.get('/')
+def root():
+    return "hello servers world"
+
+@serv.get('/user/me/entries')
+async def get_my_posts():
+    """
+        Метод получения всех своих постов по данному токену.
+    """
+    return dtf.get_all_my_entries().json()
+
+@serv.get("/entry/{id}/comments/{flag}")
+def get_comments_by_post_id(id:int):
+    """
+        Метод получения всех комментариев к посту по его id.
+    """
+    return dtf.get_comments_by_post_id(id).json()
+
+
+@serv.get('/get_new_comments')
+async def get_new_comments():
+    """
+        Метод получения новых комментариев со всех своих постов.
+    """
+    return dtf.get_new_comments()
