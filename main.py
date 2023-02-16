@@ -15,14 +15,14 @@ async def get_my_posts():
     """
         Метод получения всех своих постов по данному токену.
     """
-    return dtf.get_all_my_entries().json()
+    return await dtf.get_all_my_entries()
 
 @serv.get("/entry/{id}/comments/popular")
-def get_comments_by_post_id(id:int):
+async def get_comments_by_post_id(id:int):
     """
         Метод получения всех комментариев к посту по его id.
     """
-    return dtf.get_comments_by_post_id(id).json()
+    return await dtf.get_comments_by_post_id(id)
 
 
 @serv.get('/get_new_comments')
@@ -30,18 +30,18 @@ async def get_new_comments():
     """
         Метод получения новых комментариев со всех своих постов.
     """
-    return dtf.get_new_comments()
+    return await dtf.get_new_comments()
 
 @serv.get('/get_reply_to_my_comments')
 async def get_reply():
     """
         Метод получения всех ответов на свои комментарии.
     """
-    return dtf.get_answers_on_my_comments()
+    return await dtf.get_answers_on_my_comments()
 
 @serv.get('/get_comment_tree')
 async def get_tree(comment_id):
     """
         Метод получения дерева комментариев для конкретного комментария.
     """
-    return dtf.get_comment_tree(comment_id)
+    return await dtf.get_comment_tree(comment_id)
