@@ -1,7 +1,9 @@
 import requests
+from DTF_parser import EntryParser
 
 class DTF:
 	def __init__(self, token):
+		self.__EntryParser = EntryParser()
 		self._token = token
 		self._url = 'https://api.dtf.ru/v1.9'
 		self._header = {'X-Device-Token': token}
@@ -15,8 +17,13 @@ class DTF:
 		
 	async def get_all_my_entries(self):
 		try:
-			response = requests.get(self._url + "/user/me/entries", headers=self._header)
-			return response.json()
+			summarize = {'message':[]}
+			response = requests.get(self._url + "/user/me/entries", headers=self._header).json()
+			for entry in response['result']:
+				comments = requests.get(self._url + f"/entry/{entry['id']}/comments", headers=self._header).json()
+				comments_id = {id['id'] for id in comments['result']}
+				summarize['message'].append(self.__EntryParser.parse_entry(entry, comments_id))
+			return summarize
 		except Exception as e:
 			print(e)
 			return None

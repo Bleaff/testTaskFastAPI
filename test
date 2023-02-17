@@ -1,0 +1,69 @@
+{
+    "id": 22484126,
+    "author": {
+      "id": 609517,
+      "name": "Syhapod",
+      "avatar_url": "https://leonardo.osnova.io/fead4364-fbe0-4a50-c94a-06c6027f741b/",
+      "is_verified": false,
+      "type": 1,
+      "is_online": false,
+      "online_status_text": "Был 5 часов назад"
+    },
+    "date": 1675665328,
+    "dateRFC": "Mon, 06 Feb 2023 09:35:28 +0300",
+    "isFavorited": false,
+    "date_favorite": null,
+    "isEdited": false,
+    "likes": {
+      "is_liked": 1,
+      "count": 1,
+      "summ": 1
+    },
+    "media": [],
+    "level": 2,
+    "is_pinned": false,
+    "is_ignored": false,
+    "is_removed": false,
+    "replyTo": 22484033,
+    "text": "https://cmtt-ru.github.io/osnova-api/swaggerui/index.html#/Auth/postAuthQr\n\nНе нужна тут никакая дока, все описано и понятно, все ендпоинты примитивны\nЕщё есть вебхуки и вебсокеты, с ними все и так понятно должно быть",
+    "text_wo_md": "https://cmtt-ru.github.io/osnova-api/swaggerui/index.html#/Auth/postAuthQr\n\nНе нужна тут никакая дока, все описано и понятно, все ендпоинты примитивны\nЕщё есть вебхуки и вебсокеты, с ними все и так понятно должно быть",
+    "html": "<p><a href=\"https://cmtt-ru.github.io/osnova-api/swaggerui/index.html#/Auth/postAuthQr\" target=\"_blank\">https://cmtt-ru.github.io/osnova-api/swaggerui/index.html#/Auth/postAuthQr</a></p><p>\nНе нужна тут никакая дока, все описано и понятно, все ендпоинты примитивны<br>\nЕщё есть вебхуки и вебсокеты, с ними все и так понятно должно быть</p>",
+    "attaches": [
+      {
+        "type": "link",
+        "data": {
+          "url": "https://cmtt-ru.github.io/osnova-api/swaggerui/index.html#/Auth/postAuthQr",
+          "title": "Swagger UI",
+          "description": "",
+          "image": {
+            "type": "image",
+            "data": {
+              "uuid": "b7d45d2f-aded-5093-ab31-02b66a7aa96e",
+              "width": 32,
+              "height": 32,
+              "size": 1141,
+              "type": "png",
+              "color": "6e9d07",
+              "hash": "",
+              "external_service": []
+            }
+          },
+          "v": 1
+        }
+      }
+    ],
+    "source_id": 3,
+    "entry": null,
+    "load_more": {
+      "count": 0,
+      "ids": [],
+      "avatars": []
+    },
+    "etcControls": {
+      "pin_comment": false,
+      "remove": true,
+      "remove_thread": true
+    },
+    "highlight": "",
+    "donate": null
+  }
