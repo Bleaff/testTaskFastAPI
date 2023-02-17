@@ -61,10 +61,10 @@ class DTF:
 
 	async def __get_child_comment(self, parent_id, entry_id):
 		try:
-			all_comments_in_entry =  await self.get_comments_by_post_id(entry_id)
-			print(all_comments_in_entry)
-			answers = [comment for comment in all_comments_in_entry if int(comment['reply_to']) == int(parent_id)]
-			print(f"_______________________________{parent_id}_________________________________________\n{answers}")
+			all_comments_in_entry =  requests.get(self._url + f"/entry/{entry_id}/comments/popular", headers=self._header).json()
+			answers = [comment for comment in all_comments_in_entry['result'] if int(comment['replyTo']) == int(parent_id)]
+			for index, el in enumerate(answers):
+				answers[index] = await self.__pars_comment(el)
 			return answers
 		except Exception as e:
 			print(e)
@@ -96,11 +96,12 @@ class DTF:
 		try:
 			response = requests.get(self._url + f"/comment/{comment_id}", headers=self._header).json()
 			author_id = response['result']['author']['id']
-			print(type(comment_id))
 			entry_id = await self.__get_entry_by_comment_id(int(comment_id), author_id)
-			print(entry_id)
 			response = requests.get(self._url + f"/entry/{entry_id}/comments/thread/{comment_id}", headers=self._header).json()
-			return response
+			all_comments = response['result']['items']
+			for index, el in enumerate(all_comments):
+				all_comments[index] = await self.__pars_comment(el)
+			return await self.make_comment_tree(all_comments)
 		except Exception as e:
 			print(e)
 			return None
