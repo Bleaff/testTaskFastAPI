@@ -3,14 +3,14 @@ import json
 
 class EntryParser:
     def parse_entry(self, json_entry, comments = {}):
-        result = {'Entry': json_entry['id']}
+        result = {'id': json_entry['id']}
         result['title'] = json_entry['title']
         result['intro'] = json_entry['intro']
         for block in json_entry['blocks']:
             if block['type'] == 'list':
                 result['list'] += self.__list_parser__(block)
             elif block['type'] == 'link':
-                result += self.__link_parser__(block)
+                result += self.link_parser__(block)
         result['comments_id'] = comments
         return result
 
@@ -23,7 +23,7 @@ class EntryParser:
             result.append(item)
         return result
 
-    def __link_parser__(self, link_json):
+    def link_parser__(self, link_json):
         if type['type'] != 'link':
             return None
         keys = ['url', 'title', 'descrition'] 
@@ -33,9 +33,6 @@ class EntryParser:
             if key in data:
                 content[key] = data[key]
         return content
-
-# class CommentParser:
-#     def pars_comment(self, comment_json):
 
 
     
