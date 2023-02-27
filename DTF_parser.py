@@ -1,6 +1,3 @@
-import json
-
-
 class EntryParser:
     def parse_entry(self, json_entry, comments = {}):
         result = {'id': json_entry['id']}

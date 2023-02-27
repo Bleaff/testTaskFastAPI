@@ -1,4 +1,5 @@
 import requests
+import aiohttp
 from DTF_parser import EntryParser
 
 class DTF:
@@ -14,7 +15,15 @@ class DTF:
 			print(e)
 		else:
 			print("Connected successfuly!")
-		
+
+	async def execute_response(query):
+		"""Search the web for a query""" 
+		async with aiohttp.ClientSession(headers=self._header) as session: 
+			async with session.get(self._url + query) as response:
+				if response.status == 200: 
+					data = await response.json()
+					return data
+
 	async def get_all_my_entries(self):
 		try:
 			summarize = {'message':[]}
@@ -86,7 +95,7 @@ class DTF:
 			replies = dict()
 			com_to_entry_dict = await self.__get_all_my_coms()
 			for com_id in com_to_entry_dict.keys():
-				 replies[int(com_id)] = await self.__get_child_comment(com_id, com_to_entry_dict[com_id])
+				replies[int(com_id)] = await self.__get_child_comment(com_id, com_to_entry_dict[com_id])
 			return replies
 		except Exception as e:
 			print(e)
@@ -116,8 +125,8 @@ class DTF:
 		result['level'] = comment_json['level']
 		result['attaches'] = []
 		for attach in comment_json['attaches']:
-		    if attach['type'] == 'link':
-		        result['attaches'].append(self.__EntryParser.link_parser__(attach))
+			if attach['type'] == 'link':
+				result['attaches'].append(self.__EntryParser.link_parser__(attach))
 		result['answers'] = []
 		return result
 
