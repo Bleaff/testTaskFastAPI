@@ -9,4 +9,4 @@ class Comment:
         self.answers = []
     def __str__(self):
         """Trail version of this method"""
-        return f"{self._id}: {self._text} <|endofstatement|>"
+        return f"{self._author_name}: {self._text} <|endofstatement|>"
