@@ -1,6 +1,9 @@
 import requests
 import aiohttp
-from logging import * 
+from signalization import _error, _info
+
+
+
 
 from DTF_parser import EntryParser
 
@@ -15,19 +18,19 @@ class DTF:
 		"""Search the web for a query""" 
 		async with aiohttp.ClientSession(headers=self._header) as session: 
 			async with session.get(self._url + query) as response:
-				if response.status_code == requests.codes.ok: 
+				if response.status == requests.codes.ok: 
 					data = await response.json()
 					return data
-				elif response.status_code == 401:
+				elif response.status == 401:
 					_info("Unexpected troubles with the API-Key.")
-				elif response.status_code == 500:
+				elif response.status == 500:
 					if repeat != True:
 						_info(f"Status code 500. Trying to request one more time.")
 						self.execute_response(query, repeat=True)
 					else:
 						_error(f"Impossible to get response. Status code 500.")
 				else:
-					_error(f"Status code is {response.status_code}")
+					_error(f"Status code is {response.status}")
 					return None
 
 	async def get_all_my_entries(self):
@@ -153,3 +156,31 @@ class DTF:
 			return comment_tree
 		except Exception as e:
 			_error(e)
+
+	async def reply_to_comment(self, entry_id:int, reply_to:int, msg:str):
+		template = {
+  					"id": f"{entry_id}",
+  					"text": f"{msg}",
+  					"reply_to": f"{reply_to}",
+  					"attachments": "[]"
+					}
+		if entry_id == 0:
+			return _error("Invalid entry id. Entry id is a required parameter!")
+		async with aiohttp.ClientSession(headers=self._header) as session: 
+			async with session.post(self._url + "/comment/add", data=template) as response:
+				if response.status == requests.codes.ok: 
+					data = await response.json()
+					return data
+				elif response.status == 401:
+					_info("Unexpected troubles with the API-Key.")
+				elif response.status == 500:
+					if repeat != True:
+						_info(f"Status code 500. Trying to request one more time.")
+						self.execute_response(query, repeat=True)
+					else:
+						_error(f"Impossible to get response. Status code 500.")
+				else:
+					_error(f"Status code is {response.status}")
+					return None
+		
+# FIXME IDEA: использовать HTTPException для возврата клиенту кода ошибки. Но на сколько это нужно?¿

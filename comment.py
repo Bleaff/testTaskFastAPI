@@ -6,7 +6,11 @@ class Comment:
         self._reply_to = reply_to
         self._text = text
         self._level = lvl
+        self.time = 0
         self.answers = []
     def __str__(self):
         """Trail version of this method"""
         return f"{self._author_name}: {self._text} <|endofstatement|>"
+    
+    def get_answers(self):
+        return answers.copy()

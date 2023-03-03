@@ -12,7 +12,3 @@ def _info(text):
 
 def _error(text):
     print(f"{red('[ERROR]')}: {red(text)}")
-
-
-
-error("404 Not Found")
