@@ -13,4 +13,7 @@ class Comment:
         return f"{self._author_name}: {self._text} <|endofstatement|>"
     
     def get_answers(self):
-        return answers.copy()
+        return self.answers.copy()
+    
+    # def to_send(self):
+    #     return {"text": f"{self._text}", "reply_to": f"{self._reply_to}","attachments": "[]"}

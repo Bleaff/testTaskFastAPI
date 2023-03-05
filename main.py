@@ -1,6 +1,5 @@
 from fastapi import FastAPI
 from DTF_API import DTF
-from fastapi.responses import JSONResponse
 
 serv = FastAPI()
 

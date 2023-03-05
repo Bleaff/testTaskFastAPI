@@ -1,6 +1,7 @@
 import requests
 import aiohttp
 from signalization import _error, _info
+from comment import Comment
 
 
 
@@ -8,7 +9,17 @@ from signalization import _error, _info
 from DTF_parser import EntryParser
 
 class DTF:
+	"""
+	Класс для соединения с сервисом OsnovaApi (Tjournal, DTF, VC).
+		Данный класс предоставляет методы взаимодействия с сервисом DTF.
+		Поддерживает такие методы как:
+			Отправка комментариев в ответ.
+			Получение списка новых комментариев.
+			Построение дерева комментариев.
+			Просмотр всех записей, принадлежащих пользователю с токеном 'token'.
+	"""
 	def __init__(self, token):
+		"""Заполнение поля token, инициализация необходимых параметров."""
 		self.__EntryParser = EntryParser()
 		self._token = token
 		self._url = 'https://api.dtf.ru/v1.9'
@@ -34,6 +45,7 @@ class DTF:
 					return None
 
 	async def get_all_my_entries(self):
+		"""Получение списка всех записей пользователя с токеном token"""
 		try:
 			summarize = {'message':[]}
 			response = await self.execute_response("/user/me/entries")
@@ -47,6 +59,7 @@ class DTF:
 
 
 	async def get_comments_by_post_id(self, id, flag="popular"):
+		"""Получение всех комментариев к записи с id записи"""
 		try:
 			response = await self.execute_response(f"/entry/{id}/comments/{flag}")
 			all_comments =  [await self.__pars_comment(com) for com in response['result']]
@@ -56,6 +69,7 @@ class DTF:
 			_error(e)
 
 	async def get_new_comments(self):
+		"""Получение новых комментариев к записям пользователя с токеном token"""
 		try:
 			new_comments = dict()
 			ans = await self.get_all_my_entries()
@@ -71,6 +85,7 @@ class DTF:
 			_error(e)
 	
 	async def __get_all_my_coms(self):
+		"""Приватный метод для получения всех своих комментариев"""
 		try:
 			response = await self.execute_response(f"/user/me/comments")
 			coms_entries_id = {id['id']:id['entry']['id'] for id in response['result']}
@@ -79,6 +94,7 @@ class DTF:
 			_error(e)
 
 	async def __get_child_comment(self, parent_id, entry_id):
+		"""Метод получения всех ответов на комментарий parent_id в записи entry_id"""
 		try:
 			all_comments_in_entry = await self.execute_response(f"/entry/{entry_id}/comments/popular")
 			answers = [comment for comment in all_comments_in_entry['result'] if int(comment['replyTo']) == int(parent_id)]
@@ -89,6 +105,7 @@ class DTF:
 			_error(e)
 
 	async def __get_entry_by_comment_id(self, comment_id, author_id):
+		"""Получение entry_id записи по id комментария и id автора"""
 		try:
 			response = await self.execute_response(f"/user/{author_id}/comments")
 			for comment in response['result']:
@@ -99,6 +116,7 @@ class DTF:
 			_error(e)
 
 	async def get_answers_on_my_comments(self):
+		"""Получение ответов на все свои комментарии"""
 		try:
 			replies = dict()
 			com_to_entry_dict = await self.__get_all_my_coms()
@@ -110,6 +128,10 @@ class DTF:
 			return None
 
 	async def get_comment_tree(self, comment_id):
+		"""
+			Получение дерева комментариев (имея id комментария)
+			Дерево строится 
+		"""
 		try:
 			response = await self.execute_response(f"/comment/{comment_id}")
 			author_id = response['result']['author']['id']
@@ -173,14 +195,19 @@ class DTF:
 					return data
 				elif response.status == 401:
 					_info("Unexpected troubles with the API-Key.")
-				elif response.status == 500:
-					if repeat != True:
-						_info(f"Status code 500. Trying to request one more time.")
-						self.execute_response(query, repeat=True)
-					else:
-						_error(f"Impossible to get response. Status code 500.")
 				else:
 					_error(f"Status code is {response.status}")
 					return None
-		
+	
+	async def send_to_model(comment:Comment):
+		async with aiohttp.ClientSession(headers=self._header) as session: 
+			async with session.post(self._url + "/comment/add", data=template) as response:
+				if response.status == requests.codes.ok: 
+					data = await response.json()
+					return data
+				elif response.status == 401:
+					_info("Unexpected troubles with the API-Key.")
+				else:
+					_error(f"Status code is {response.status}")
+					return None
 # FIXME IDEA: использовать HTTPException для возврата клиенту кода ошибки. Но на сколько это нужно?¿
