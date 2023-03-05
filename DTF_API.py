@@ -130,7 +130,7 @@ class DTF:
 	async def get_comment_tree(self, comment_id):
 		"""
 			Получение дерева комментариев (имея id комментария)
-			Дерево строится 
+			Дерево строится с включением всех комментариев, принадлежащих одной ветке.
 		"""
 		try:
 			response = await self.execute_response(f"/comment/{comment_id}")
@@ -146,6 +146,7 @@ class DTF:
 			return None
 
 	async def __pars_comment(self, comment_json):
+		"""Метод парсинга комментария с json в словарь"""
 		try:
 			result = dict()
 			result["id"] = comment_json['id']
@@ -164,6 +165,7 @@ class DTF:
 			_error(e)
 
 	async def make_comment_tree(self, all_comments):
+		"""Алгоритм построения дерева комментариев с включением всех комментариев одной ветки"""
 		try:
 			all_comments.sort(key=lambda x: x['level'], reverse=True)
 			def get_index(comment_id, comments):
@@ -180,6 +182,10 @@ class DTF:
 			_error(e)
 
 	async def reply_to_comment(self, entry_id:int, reply_to:int, msg:str):
+		"""
+			Метод отправки ответа на комментарий или на запись с entry_id. 
+			ВНИМАНИЕ:Entry_id является обязательным параметром, даже при ответе на комментарий.
+		"""
 		template = {
   					"id": f"{entry_id}",
   					"text": f"{msg}",
@@ -200,6 +206,11 @@ class DTF:
 					return None
 	
 	async def send_to_model(comment:Comment):
+		#FIXME method 
+		"""
+			Метод для отправки в модель дерева комментариев.
+			Так как метод еще не дописан(не продумана система отправки) шаблон будет следующим.
+		"""
 		async with aiohttp.ClientSession(headers=self._header) as session: 
 			async with session.post(self._url + "/comment/add", data=template) as response:
 				if response.status == requests.codes.ok: 
