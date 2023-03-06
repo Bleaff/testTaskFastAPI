@@ -1,7 +1,7 @@
 import requests
 import aiohttp
 from signalization import _error, _info
-from comment import Comment
+from comment import Comment, CommentTree
 
 from DTF_parser import EntryParser
 
@@ -60,26 +60,27 @@ class DTF:
 		try:
 			response = await self.execute_response(f"/entry/{id}/comments/{flag}")
 			all_comments =  [await self.__pars_comment(com) for com in response['result']]
-			comment_tree = await self.make_comment_tree(all_comments)
-			return comment_tree
+			return await CommentTree(all_comments, id).make_comment_tree()
+
 		except Exception as e:
 			_error(e)
 
 	async def get_new_comments(self):
 		"""Получение новых комментариев к записям пользователя с токеном token"""
-		try:
-			new_comments = dict()
-			ans = await self.get_all_my_entries()
-			print(ans)
-			my_entries = [id_entry['id'] for id_entry in ans['message']]
-			for index, entry_id in enumerate(my_entries):
-				new_comments[index] = {
-					'entry_id': entry_id,
-					'new_comments_tree': await self.get_comments_by_post_id(entry_id, "recent")
-				}
-			return new_comments
-		except Exception as e:
-			_error(e)
+		# try:
+		new_comments_dict = dict()
+		ans = await self.get_all_my_entries()
+		my_entries = [id_entry['id'] for id_entry in ans['message']]
+		for index, entry_id in enumerate(my_entries):
+			resp =  await self.get_comments_by_post_id(entry_id, "recent") 
+			comments = resp if resp != None else [] 
+			new_comments_dict[index] = {
+				'entry_id': entry_id,
+				'new_comments_tree':comments
+			}
+		return new_comments_dict
+		# except Exception as e:
+		# 	_error(e)
 	
 	async def __get_all_my_coms(self):
 		"""Приватный метод для получения всех своих комментариев"""
@@ -137,7 +138,7 @@ class DTF:
 			all_comments = response['result']['items']
 			for index, el in enumerate(all_comments):
 				all_comments[index] = await self.__pars_comment(el)
-			return await self.make_comment_tree(all_comments)
+			return await CommentTree(all_comments, entry_id).make_comment_tree()
 		except Exception as e:
 			print(e)
 			return None
@@ -147,31 +148,31 @@ class DTF:
 		try:
 			comment = Comment(comment_json['id'],
 								comment_json['author']['name'],
-								comment_json['media'],
 								comment_json['replyTo'],
 								comment_json['text'],
-								comment_json['level']
+								comment_json['level'],
+								comment_json['date']
 							)
 			return comment
 		except Exception as e:
 			_error(e)
 
-	async def make_comment_tree(self, all_comments):
-		"""Алгоритм построения дерева комментариев с включением всех комментариев одной ветки"""
-		try:
-			all_comments.sort(key=lambda x: x['level'], reverse=True)
-			def get_index(comment_id, comments):
-				for i in range(len(comments)):
-					if comments[i]['id'] == comment_id:
-						return i
-			for comment in all_comments:
-				if (comment['reply_to'] != 0):
-					next_index = get_index(comment['reply_to'], all_comments)
-					all_comments[next_index]['answers'].append(comment)
-			comment_tree = [element for element in all_comments if element['level'] ==  0]
-			return comment_tree
-		except Exception as e:
-			_error(e)
+	# async def make_comment_tree(self, all_comments):
+	# 	"""Алгоритм построения дерева комментариев с включением всех комментариев одной ветки"""
+	# 	try:
+	# 		all_comments.sort(key=lambda x: x['level'], reverse=True)
+	# 		def get_index(comment_id, comments):
+	# 			for i in range(len(comments)):
+	# 				if comments[i]['id'] == comment_id:
+	# 					return i
+	# 		for comment in all_comments:
+	# 			if (comment['reply_to'] != 0):
+	# 				next_index = get_index(comment['reply_to'], all_comments)
+	# 				all_comments[next_index]['answers'].append(comment)
+	# 		comment_tree = [element for element in all_comments if element['level'] ==  0]
+	# 		return comment_tree
+	# 	except Exception as e:
+	# 		_error(e)
 
 	async def reply_to_comment(self, entry_id:int, reply_to:int, msg:str):
 		"""
@@ -213,4 +214,32 @@ class DTF:
 				else:
 					_error(f"Status code is {response.status}")
 					return None
+	
+	async def get_updates(self):
+		url = 'https://api.dtf.ru/v1.9/user/me/updates?is_read=1'
+		async with aiohttp.ClientSession(headers=self._header) as session: 
+			async with session.get(url) as response:
+				if response.status == requests.codes.ok: 
+					data = await response.json()
+					return data
+				elif response.status == 401:
+					_info("Unexpected troubles with the API-Key.")
+				else:
+					_error(f"Status code is {response.status}")
+					return None
+	async def get_updates_count(self):
+		url = 'https://api.dtf.ru/v1.9/user/me/updates/count'
+		async with aiohttp.ClientSession(headers=self._header) as session: 
+			async with session.get(url) as response:
+				if response.status == requests.codes.ok: 
+					data = await response.json()
+					return data
+				elif response.status == 401:
+					_info("Unexpected troubles with the API-Key.")
+				else:
+					_error(f"Status code is {response.status}")
+					return None
+
+
+
 # FIXME IDEA: использовать HTTPException для возврата клиенту кода ошибки. Но на сколько это нужно?¿
