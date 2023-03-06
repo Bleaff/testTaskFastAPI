@@ -3,9 +3,6 @@ import aiohttp
 from signalization import _error, _info
 from comment import Comment
 
-
-
-
 from DTF_parser import EntryParser
 
 class DTF:
@@ -144,23 +141,18 @@ class DTF:
 		except Exception as e:
 			print(e)
 			return None
-
+#FIXME
 	async def __pars_comment(self, comment_json):
 		"""Метод парсинга комментария с json в словарь"""
 		try:
-			result = dict()
-			result["id"] = comment_json['id']
-			result['author_name'] = comment_json['author']['name']
-			result['media'] = comment_json['media']
-			result['reply_to'] = comment_json['replyTo']
-			result['text'] = comment_json['text']
-			result['level'] = comment_json['level']
-			result['attaches'] = []
-			for attach in comment_json['attaches']:
-				if attach['type'] == 'link':
-					result['attaches'].append(self.__EntryParser.link_parser__(attach))
-			result['answers'] = []
-			return result
+			comment = Comment(comment_json['id'],
+								comment_json['author']['name'],
+								comment_json['media'],
+								comment_json['replyTo'],
+								comment_json['text'],
+								comment_json['level']
+							)
+			return comment
 		except Exception as e:
 			_error(e)
 
