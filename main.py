@@ -21,7 +21,8 @@ async def get_comments_by_post_id(id:int):
     """
         Метод получения всех комментариев к посту по его id.
     """
-    return await dtf.get_comments_by_post_id(id)
+    comment_tree = await dtf.get_comments_by_post_id(id)
+    return await comment_tree.make_comment_tree()
 
 
 @serv.get('/get_new_comments')

@@ -54,29 +54,33 @@ class DTF:
 		except Exception as e:
 			_error(e)
 
-
 	async def get_comments_by_post_id(self, id, flag="popular"):
-		"""Получение всех комментариев к записи с id записи"""
+		"""Получение всех комментариев к записи с id записи в виде дерева."""
 		try:
 			response = await self.execute_response(f"/entry/{id}/comments/{flag}")
 			all_comments =  [await self.__pars_comment(com) for com in response['result']]
-			return await CommentTree(all_comments, id).make_comment_tree()
+			return CommentTree(all_comments, id)
 		except Exception as e:
 			_error(e)
 
 	async def get_new_comments(self):
 		"""Получение новых комментариев к записям пользователя с токеном token"""
-		try:
-			new_comments_dict = dict()
-			updates_count = await self.get_updates_count()
-			updates_list = await self.get_updates()
-			entry_to_comment = self.parse_update(updates_list, 'comment', updates_count)
-			for entry in entry_to_comment:
-				all_comments_from_entry = await self.get_comments_by_post_id(entry)
-				new_comments_dict[entry] = all_comments_from_entry.get_comments_by_id(entry_to_comment[entry])
-			return new_comments_dict
-		except Exception as e:
-			_error(e)
+		# try:
+		new_comments_dict = dict()
+		updates_count = await self.get_updates_count()
+		count = updates_count['result']['count']
+		print(count)
+		updates_list = await self.get_updates()
+		_info("Data was collected")
+		entry_to_comment = self.parse_update(updates_list, 'comment', count)
+		print(entry_to_comment)
+		_info("Data was parsed")
+		for entry in entry_to_comment:
+			all_comments_from_entry = await self.get_comments_by_post_id(entry)
+			new_comments_dict[entry] = all_comments_from_entry.get_comments_by_id(entry_to_comment[entry])
+		return new_comments_dict
+		# except Exception as e:
+		# 	_error(e)
 	
 	async def __get_all_my_coms(self):
 		"""Приватный метод для получения всех своих комментариев"""
@@ -219,7 +223,7 @@ class DTF:
 					_error(f"Status code is {response.status}")
 					return None
 
-	def parse_update(json_updates:dict, type:str, count:int):
+	def parse_update(self, json_updates:dict, type:str, count:int):
 		"""type - может быть comment/reply/like_up"""
 		data = json_updates['result']
 		updates = {}
@@ -228,8 +232,9 @@ class DTF:
 
 		for i in range(count):
 			if data[i]['icon'] == type:
-				splited_url = data[i]['url'].split('/')[4]
+				splited_url = data[i]['url'].split('/')[5]
 				entry_id = int(splited_url.split('-')[0])
+				print(splited_url)
 				comment_id = int(splited_url.split('=')[-1])
 				updates.setdefault(entry_id, list()).append(comment_id)
 				print(f"entry:{entry_id}, comment_id:{comment_id}")

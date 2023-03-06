@@ -4,6 +4,7 @@ class CommentTree:
 	def __init__(self, comments_list :list, entry_id :int) -> None:
 		self.all_comments = comments_list
 		self._entry_id = entry_id
+		self.comment_tree = []
 
 	async def make_comment_tree(self):
 		"""Алгоритм построения дерева комментариев с включением всех переданных комментариев."""
@@ -18,15 +19,17 @@ class CommentTree:
 					next_index = get_index(comment.reply_to, self.all_comments)
 					self.all_comments[next_index].answers.append(comment)
 			comment_tree = [element for element in self.all_comments if element.level ==  0]
+			self.comment_tree = comment_tree
 			return comment_tree
 		except Exception as e:
 			_error(e)
-	def get_comment_by_id(find_id:int):
+
+	def get_comment_by_id(self, find_id:int):
 		for comment in self.all_comments:
 			if comment.id == find_id:
 				return comment
 		return None
-	def get_comments_by_id(find_id:list):
+	def get_comments_by_id(self, find_id:list):
 		result = []
 		for comment in self.all_comments:
 			if comment.id in find_id:
