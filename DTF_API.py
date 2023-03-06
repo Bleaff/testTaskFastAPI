@@ -69,12 +69,8 @@ class DTF:
 		new_comments_dict = dict()
 		updates_count = await self.get_updates_count()
 		count = updates_count['result']['count']
-		print(count)
 		updates_list = await self.get_updates()
-		_info("Data was collected")
 		entry_to_comment = self.parse_update(updates_list, 'comment', count)
-		print(entry_to_comment)
-		_info("Data was parsed")
 		for entry in entry_to_comment:
 			all_comments_from_entry = await self.get_comments_by_post_id(entry)
 			new_comments_dict[entry] = all_comments_from_entry.get_comments_by_id(entry_to_comment[entry])
@@ -216,7 +212,7 @@ class DTF:
 			async with session.get(url) as response:
 				if response.status == requests.codes.ok: 
 					data = await response.json()
-					return data
+					return data['result']['count']
 				elif response.status == 401:
 					_info("Unexpected troubles with the API-Key.")
 				else:

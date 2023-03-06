@@ -35,6 +35,15 @@ class CommentTree:
 			if comment.id in find_id:
 				result.append(comment)
 		return result
+	
+	def __repr__(self):
+		return f"{self.__class__}: with entry_id {self.entry_id}"
+
+	def __str__(self) -> str:
+		result = ""
+		for comment in self.all_comments:
+			result += str(comment) + "\n"
+		return result
         
 
 class Comment:
@@ -48,7 +57,7 @@ class Comment:
         self.answers = []
     def __str__(self) -> str:
         """Trail version of this method"""
-        return f"{self._author_name}: {self._text} <|endofstatement|>"
+        return f"{self.author_name}: {self.text} <|endofstatement|>"
     
     def get_answers(self) -> list:
         return self.answers.copy()
