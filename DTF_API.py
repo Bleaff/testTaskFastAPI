@@ -61,26 +61,22 @@ class DTF:
 			response = await self.execute_response(f"/entry/{id}/comments/{flag}")
 			all_comments =  [await self.__pars_comment(com) for com in response['result']]
 			return await CommentTree(all_comments, id).make_comment_tree()
-
 		except Exception as e:
 			_error(e)
 
 	async def get_new_comments(self):
 		"""Получение новых комментариев к записям пользователя с токеном token"""
-		# try:
-		new_comments_dict = dict()
-		ans = await self.get_all_my_entries()
-		my_entries = [id_entry['id'] for id_entry in ans['message']]
-		for index, entry_id in enumerate(my_entries):
-			resp =  await self.get_comments_by_post_id(entry_id, "recent") 
-			comments = resp if resp != None else [] 
-			new_comments_dict[index] = {
-				'entry_id': entry_id,
-				'new_comments_tree':comments
-			}
-		return new_comments_dict
-		# except Exception as e:
-		# 	_error(e)
+		try:
+			new_comments_dict = dict()
+			updates_count = await self.get_updates_count()
+			updates_list = await self.get_updates()
+			entry_to_comment = self.parse_update(updates_list, 'comment', updates_count)
+			for entry in entry_to_comment:
+				all_comments_from_entry = await self.get_comments_by_post_id(entry)
+				new_comments_dict[entry] = all_comments_from_entry.get_comments_by_id(entry_to_comment[entry])
+			return new_comments_dict
+		except Exception as e:
+			_error(e)
 	
 	async def __get_all_my_coms(self):
 		"""Приватный метод для получения всех своих комментариев"""
@@ -157,23 +153,6 @@ class DTF:
 		except Exception as e:
 			_error(e)
 
-	# async def make_comment_tree(self, all_comments):
-	# 	"""Алгоритм построения дерева комментариев с включением всех комментариев одной ветки"""
-	# 	try:
-	# 		all_comments.sort(key=lambda x: x['level'], reverse=True)
-	# 		def get_index(comment_id, comments):
-	# 			for i in range(len(comments)):
-	# 				if comments[i]['id'] == comment_id:
-	# 					return i
-	# 		for comment in all_comments:
-	# 			if (comment['reply_to'] != 0):
-	# 				next_index = get_index(comment['reply_to'], all_comments)
-	# 				all_comments[next_index]['answers'].append(comment)
-	# 		comment_tree = [element for element in all_comments if element['level'] ==  0]
-	# 		return comment_tree
-	# 	except Exception as e:
-	# 		_error(e)
-
 	async def reply_to_comment(self, entry_id:int, reply_to:int, msg:str):
 		"""
 			Метод отправки ответа на комментарий или на запись с entry_id. 
@@ -239,6 +218,23 @@ class DTF:
 				else:
 					_error(f"Status code is {response.status}")
 					return None
+
+	def parse_update(json_updates:dict, type:str, count:int):
+		"""type - может быть comment/reply/like_up"""
+		data = json_updates['result']
+		updates = {}
+		entries = []
+		comment_to_entry = {}
+
+		for i in range(count):
+			if data[i]['icon'] == type:
+				splited_url = data[i]['url'].split('/')[4]
+				entry_id = int(splited_url.split('-')[0])
+				comment_id = int(splited_url.split('=')[-1])
+				updates.setdefault(entry_id, list()).append(comment_id)
+				print(f"entry:{entry_id}, comment_id:{comment_id}")
+		return updates
+
 
 
 

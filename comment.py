@@ -21,6 +21,17 @@ class CommentTree:
 			return comment_tree
 		except Exception as e:
 			_error(e)
+	def get_comment_by_id(find_id:int):
+		for comment in self.all_comments:
+			if comment.id == find_id:
+				return comment
+		return None
+	def get_comments_by_id(find_id:list):
+		result = []
+		for comment in self.all_comments:
+			if comment.id in find_id:
+				result.append(comment)
+		return result
         
 
 class Comment:
