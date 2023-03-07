@@ -68,7 +68,7 @@ class DTF:
 		# try:
 		new_comments_dict = dict()
 		updates_count = await self.get_updates_count()
-		count = updates_count['result']['count']
+		count = updates_count
 		updates_list = await self.get_updates()
 		entry_to_comment = self.parse_update(updates_list, 'comment', count)
 		for entry in entry_to_comment:

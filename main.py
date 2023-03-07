@@ -49,6 +49,7 @@ async def get_tree(comment_id):
 @serv.post("/comment/add")
 async def post_reply(entry_id:int, msg:str, id_to_reply:int = 0):
     return await dtf.reply_to_comment(entry_id, id_to_reply, msg)
+
 @serv.get("/get_updates")
 async def get_updates():
     return await dtf.get_updates()
