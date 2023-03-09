@@ -25,7 +25,7 @@ class DTF:
 	async def execute_response(self, query, repeat=False):
 		"""Search the web for a query""" 
 		async with aiohttp.ClientSession(headers=self._header) as session: 
-			async with session.get(self._url + query) as response:
+			async with session.get(self._url + query, ssl=False) as response:
 				if response.status == requests.codes.ok: 
 					data = await response.json()
 					return data
@@ -54,7 +54,7 @@ class DTF:
 		except Exception as e:
 			_error(e)
 
-	async def get_comments_by_post_id(self, id, flag="popular"):
+	async def get_comments_by_post_id(self, id, flag="popular") -> CommentTree:
 		"""Получение всех комментариев к записи с id записи в виде дерева."""
 		try:
 			response = await self.execute_response(f"/entry/{id}/comments/{flag}")
@@ -73,7 +73,7 @@ class DTF:
 		entry_to_comment = self.parse_update(updates_list, 'comment', count)
 		for entry in entry_to_comment:
 			all_comments_from_entry = await self.get_comments_by_post_id(entry)
-			new_comments_dict[entry] = all_comments_from_entry.get_comments_by_id(entry_to_comment[entry])
+			new_comments_dict[entry] = all_comments_from_entry.get_comments_by_id(entry_to_comment[entry]) # получаем комментарии с нужными id из всех комментариев записи в виде CommentTree  
 		return new_comments_dict
 		# except Exception as e:
 		# 	_error(e)
@@ -115,7 +115,8 @@ class DTF:
 			replies = dict()
 			com_to_entry_dict = await self.__get_all_my_coms()
 			for com_id in com_to_entry_dict.keys():
-				replies[int(com_id)] = await self.__get_child_comment(com_id, com_to_entry_dict[com_id])
+				replies_list = await self.__get_child_comment(com_id, com_to_entry_dict[com_id])
+				replies[int(com_id)] = CommentTree(replies_list, -1).get_all_comments_as_dict()
 			return replies
 		except Exception as e:
 			print(e)
@@ -124,7 +125,7 @@ class DTF:
 	async def get_comment_tree(self, comment_id):
 		"""
 			Получение дерева комментариев (имея id комментария)
-			Дерево строится с включением всех комментариев, принадлежащих одной ветке.
+			Дерево строится  по ответам, принадлежащим одной ветке.
 		"""
 		try:
 			response = await self.execute_response(f"/comment/{comment_id}")
@@ -134,7 +135,8 @@ class DTF:
 			all_comments = response['result']['items']
 			for index, el in enumerate(all_comments):
 				all_comments[index] = await self.__pars_comment(el)
-			return await CommentTree(all_comments, entry_id).make_comment_tree()
+			comment_tree = CommentTree(all_comments, entry_id)
+			return await comment_tree.make_comment_tree_v2()
 		except Exception as e:
 			print(e)
 			return None
@@ -197,7 +199,7 @@ class DTF:
 	async def get_updates(self):
 		url = 'https://api.dtf.ru/v1.9/user/me/updates?is_read=1'
 		async with aiohttp.ClientSession(headers=self._header) as session: 
-			async with session.get(url) as response:
+			async with session.get(url,  ssl=False) as response:
 				if response.status == requests.codes.ok: 
 					data = await response.json()
 					return data
@@ -209,7 +211,7 @@ class DTF:
 	async def get_updates_count(self):
 		url = 'https://api.dtf.ru/v1.9/user/me/updates/count'
 		async with aiohttp.ClientSession(headers=self._header) as session: 
-			async with session.get(url) as response:
+			async with session.get(url, ssl=False) as response:
 				if response.status == requests.codes.ok: 
 					data = await response.json()
 					return data['result']['count']

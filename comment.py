@@ -3,26 +3,37 @@ from signalization import _error
 class CommentTree:
 	def __init__(self, comments_list :list, entry_id :int) -> None:
 		self.all_comments = comments_list
-		self._entry_id = entry_id
+		self.entry_id = entry_id
 		self.comment_tree = []
 
 	async def make_comment_tree(self):
 		"""Алгоритм построения дерева комментариев с включением всех переданных комментариев."""
 		try:
-			self.all_comments.sort(key=lambda x: x.level, reverse=True)
+			list_of_comments = self.get_all_comments()
+			list_of_comments.sort(key=lambda x: x.level, reverse=True)
 			def get_index(comment_id, comments):
 				for i in range(len(comments)):
 					if comments[i].id == comment_id:
 						return i
-			for comment in self.all_comments:
+			for comment in list_of_comments:
 				if (comment.reply_to != 0):
-					next_index = get_index(comment.reply_to, self.all_comments)
-					self.all_comments[next_index].answers.append(comment)
-			comment_tree = [element for element in self.all_comments if element.level ==  0]
+					next_index = get_index(comment.reply_to, list_of_comments)
+					list_of_comments[next_index].answers.append(comment)
+			comment_tree = [element for element in list_of_comments if element.level ==  0]
 			self.comment_tree = comment_tree
 			return comment_tree
 		except Exception as e:
 			_error(e)
+	
+	async def make_comment_tree_v2(self):
+			list_of_comments = self.get_all_comments()
+			list_of_comments.sort(key=lambda x: x.level)
+			self.comment_tree = list_of_comments
+			result = []
+			for comment in self.comment_tree:
+				result.append(comment.__dict__)
+			return result
+
 
 	def get_comment_by_id(self, find_id:int):
 		for comment in self.all_comments:
@@ -34,7 +45,8 @@ class CommentTree:
 		for comment in self.all_comments:
 			if comment.id in find_id:
 				result.append(comment)
-		return result
+			
+		return CommentTree(result, self.entry_id)
 	
 	def __repr__(self):
 		return f"{self.__class__}: with entry_id {self.entry_id}"
@@ -44,7 +56,19 @@ class CommentTree:
 		for comment in self.all_comments:
 			result += str(comment) + "\n"
 		return result
-        
+	def get_all_comments(self)->list:
+		return self.all_comments.copy()
+	def get_all_comments_as_dict(self)->dict:
+		result = []
+		for comment in self.all_comments:
+				result.append(comment.__dict__)
+		return result
+
+	def get_comment_tree_as_dict(self):
+		result = []
+		for comment in self.comment_tree:
+				result.append(comment.__dict__)
+		return result
 
 class Comment:
     def __init__(self, id, auth_name, reply_to, text, lvl, date):
