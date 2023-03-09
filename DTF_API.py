@@ -65,18 +65,19 @@ class DTF:
 
 	async def get_new_comments(self):
 		"""Получение новых комментариев к записям пользователя с токеном token"""
-		# try:
-		new_comments_dict = dict()
-		updates_count = await self.get_updates_count()
-		count = updates_count
-		updates_list = await self.get_updates()
-		entry_to_comment = self.parse_update(updates_list, 'comment', count)
-		for entry in entry_to_comment:
-			all_comments_from_entry = await self.get_comments_by_post_id(entry)
-			new_comments_dict[entry] = all_comments_from_entry.get_comments_by_id(entry_to_comment[entry]) # получаем комментарии с нужными id из всех комментариев записи в виде CommentTree  
-		return new_comments_dict
-		# except Exception as e:
-		# 	_error(e)
+		try:
+			new_comments_dict = dict()
+			updates_count = await self.get_updates_count()
+			count = updates_count
+			updates_list = await self.get_updates()
+			entry_to_comment = self.parse_update(updates_list, 'comment', count)
+			for entry in entry_to_comment:
+				all_comments_from_entry = await self.get_comments_by_post_id(entry)
+				comment_tree = all_comments_from_entry.get_comments_by_id(entry_to_comment[entry]) # получаем комментарии с нужными id из всех комментариев записи в виде CommentTree  
+				new_comments_dict[entry] = comment_tree.get_all_comments_as_dict()
+			return new_comments_dict
+		except Exception as e:
+			_error(e)
 	
 	async def __get_all_my_coms(self):
 		"""Приватный метод для получения всех своих комментариев"""
@@ -232,10 +233,8 @@ class DTF:
 			if data[i]['icon'] == type:
 				splited_url = data[i]['url'].split('/')[5]
 				entry_id = int(splited_url.split('-')[0])
-				print(splited_url)
 				comment_id = int(splited_url.split('=')[-1])
 				updates.setdefault(entry_id, list()).append(comment_id)
-				print(f"entry:{entry_id}, comment_id:{comment_id}")
 		return updates
 
 

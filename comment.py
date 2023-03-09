@@ -69,6 +69,12 @@ class CommentTree:
 		for comment in self.comment_tree:
 				result.append(comment.__dict__)
 		return result
+	
+	def get_tree_as_str(self)->str:
+		result = ""
+		for comment in self.comment_tree:
+			result += str(comment) + "\n"
+		return result
 
 class Comment:
     def __init__(self, id, auth_name, reply_to, text, lvl, date):
