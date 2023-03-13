@@ -1,13 +1,43 @@
 from signalization import _error
 
+class Comment:
+	def __init__(self, id, auth_name, reply_to, text, lvl, date):
+		self.id = id
+		self.author_name = auth_name
+		self.reply_to = reply_to
+		self.text = text
+		self.level = lvl
+		self.time = date
+		self.answers = []
+	def __str__(self) -> str:
+		"""Trail version of this method"""
+		return f"{self.author_name}: {self.text} <|endofstatement|>"
+
+	def get_answers(self) -> list:
+		return self.answers.copy()
+
+	def get_reply(self):
+		"""Метод возвращает id комментария, ответом на который ялвяется текущий коммент"""
+		return  self.reply_to
+	def get_text(self) -> str:
+		return self.text
+
 class CommentTree:
+	"""
+		Класс для удобства взаимодействия с комментариями одной записи. Может использоваться для вывода все комментарикв в виде беседы, 
+		построения дерева комментариев.
+	"""
 	def __init__(self, comments_list :list, entry_id :int) -> None:
+		"""Инициализация дерева комментариев параметрами: 
+			1. Список комментариев - comment_list
+			2. id записи - entry_id
+		"""
 		self.all_comments = comments_list
 		self.entry_id = entry_id
 		self.comment_tree = []
 
-	async def make_comment_tree(self):
-		"""Алгоритм построения дерева комментариев с включением всех переданных комментариев."""
+	async def make_comment_tree(self, comment_id):
+		"""Алгоритм построения остортированного списка комментариев вверх от переданного comment_id."""
 		try:
 			list_of_comments = self.get_all_comments()
 			list_of_comments.sort(key=lambda x: x.level, reverse=True)
@@ -25,27 +55,32 @@ class CommentTree:
 		except Exception as e:
 			_error(e)
 	
-	async def make_comment_tree_v2(self):
-			list_of_comments = self.get_all_comments()
-			list_of_comments.sort(key=lambda x: x.level)
-			self.comment_tree = list_of_comments
-			result = []
-			for comment in self.comment_tree:
-				result.append(comment.__dict__)
-			return result
+	async def make_comment_tree_v2(self, comment_id) -> list:
+		"""Алгоритм построения остортированного списка комментариев вверх от переданного comment_id.
+		Возвращаемое значение: list = [пост_id, 'коммент1', 'коммент2'...]"""
+		last_comment = self.get_comment_by_id(comment_id)
+		result_list = [last_comment.text]
+		next_comment = self.get_next_comment(comment_id)
+		while (next_comment):
+			result_list.append(next_comment.text)
+			next_comment = self.get_next_comment(next_comment)
+		result_list.append(self.entry_id)
+		result_list.reverse()
+		return result_list
 
-
-	def get_comment_by_id(self, find_id:int):
+	def get_comment_by_id(self, find_id:int) -> Comment:
+		temp = int(find_id)
+		find_id = temp
 		for comment in self.all_comments:
 			if comment.id == find_id:
 				return comment
 		return None
+
 	def get_comments_by_id(self, find_id:list):
 		result = []
 		for comment in self.all_comments:
 			if comment.id in find_id:
 				result.append(comment)
-			
 		return CommentTree(result, self.entry_id)
 	
 	def __repr__(self):
@@ -56,8 +91,10 @@ class CommentTree:
 		for comment in self.all_comments:
 			result += str(comment) + "\n"
 		return result
+
 	def get_all_comments(self)->list:
 		return self.all_comments.copy()
+
 	def get_all_comments_as_dict(self)->dict:
 		result = []
 		for comment in self.all_comments:
@@ -76,21 +113,10 @@ class CommentTree:
 			result += str(comment) + "\n"
 		return result
 
-class Comment:
-    def __init__(self, id, auth_name, reply_to, text, lvl, date):
-        self.id = id
-        self.author_name = auth_name
-        self.reply_to = reply_to
-        self.text = text
-        self.level = lvl
-        self.time = date
-        self.answers = []
-    def __str__(self) -> str:
-        """Trail version of this method"""
-        return f"{self.author_name}: {self.text} <|endofstatement|>"
-    
-    def get_answers(self) -> list:
-        return self.answers.copy()
-    
-    # def to_send(self):
-    #     return {"text": f"{self._text}", "reply_to": f"{self._reply_to}","attachments": "[]"}
+	def get_next_comment(self, cur_comment) -> Comment:
+		"""Движение от последнего комментария наверх"""
+		if isinstance(cur_comment, Comment):
+			return self.get_comment_by_id(cur_comment.get_reply())
+		else:
+			curent_comment = self.get_comment_by_id(cur_comment)
+			return self.get_comment_by_id(curent_comment.get_reply())
