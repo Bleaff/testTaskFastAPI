@@ -1,9 +1,14 @@
+import asyncio
 from fastapi import FastAPI
 from DTF_API import DTF
 
 serv = FastAPI()
 
 dtf = DTF(token = "79a24dbb2334b0a52a506db13f561cc006a6c2b52c12ed5ce2850eb5dd86a583")
+
+@serv.on_event("startup")
+async startup_event():
+    asyncio.create_task()
 
 @serv.get('/')
 def root():

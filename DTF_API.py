@@ -21,8 +21,13 @@ class DTF:
 		self._token = token
 		self._url = 'https://api.dtf.ru/v1.9'
 		self._header = {'X-Device-Token': token}
+		self.tasks = asyncoi.Queue()
 
 	async def execute_response(self, query, repeat=False):
+		await self.tasks.put(self.do_query(query))
+		return 
+
+	async def do_query(self, query, repeat=False):
 		"""Search the web for a query""" 
 		async with aiohttp.ClientSession(headers=self._header) as session: 
 			async with session.get(self._url + query) as response:
@@ -34,7 +39,7 @@ class DTF:
 				elif response.status == 500:
 					if repeat != True:
 						_info(f"Status code 500. Trying to request one more time.")
-						self.execute_response(query, repeat=True)
+						self.do_query(query, repeat=True)
 					else:
 						_error(f"Impossible to get response. Status code 500.")
 				else:
@@ -138,7 +143,7 @@ class DTF:
 		except Exception as e:
 			print(e)
 			return None
-#FIXME
+
 	async def __pars_comment(self, comment_json):
 		"""Метод парсинга комментария с json в словарь"""
 		try:
@@ -206,6 +211,7 @@ class DTF:
 				else:
 					_error(f"Status code is {response.status}")
 					return None
+
 	async def get_updates_count(self):
 		url = 'https://api.dtf.ru/v1.9/user/me/updates/count'
 		async with aiohttp.ClientSession(headers=self._header) as session: 
@@ -235,8 +241,3 @@ class DTF:
 				updates.setdefault(entry_id, list()).append(comment_id)
 				print(f"entry:{entry_id}, comment_id:{comment_id}")
 		return updates
-
-
-
-
-# FIXME IDEA: использовать HTTPException для возврата клиенту кода ошибки. Но на сколько это нужно?¿
