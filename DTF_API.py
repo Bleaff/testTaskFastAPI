@@ -30,7 +30,7 @@ class DTF:
 	async def do_query(self, query, repeat=False):
 		"""Search the web for a query""" 
 		async with aiohttp.ClientSession(headers=self._header) as session: 
-			async with session.get(self._url + query) as response:
+			async with session.get(self._url + query, ssl=False) as response:
 				if response.status == requests.codes.ok: 
 					data = await response.json()
 					return data
@@ -52,14 +52,14 @@ class DTF:
 			summarize = {'message':[]}
 			response = await self.execute_response("/user/me/entries")
 			for entry in response['result']:
-				comments = requests.get(self._url + f"/entry/{entry['id']}/comments", headers=self._header).json()
+				comments = await self.execute_response(f"/entry/{entry['id']}/comments")
 				comments_id = {id['id'] for id in comments['result']}
 				summarize['message'].append(self.__EntryParser.parse_entry(entry, comments_id))
 			return summarize
 		except Exception as e:
 			_error(e)
 
-	async def get_comments_by_post_id(self, id, flag="popular"):
+	async def get_comments_by_post_id(self, id, flag="popular") -> CommentTree:
 		"""Получение всех комментариев к записи с id записи в виде дерева."""
 		try:
 			response = await self.execute_response(f"/entry/{id}/comments/{flag}")
@@ -70,18 +70,19 @@ class DTF:
 
 	async def get_new_comments(self):
 		"""Получение новых комментариев к записям пользователя с токеном token"""
-		# try:
-		new_comments_dict = dict()
-		updates_count = await self.get_updates_count()
-		count = updates_count['result']['count']
-		updates_list = await self.get_updates()
-		entry_to_comment = self.parse_update(updates_list, 'comment', count)
-		for entry in entry_to_comment:
-			all_comments_from_entry = await self.get_comments_by_post_id(entry)
-			new_comments_dict[entry] = all_comments_from_entry.get_comments_by_id(entry_to_comment[entry])
-		return new_comments_dict
-		# except Exception as e:
-		# 	_error(e)
+		try:
+			new_comments_dict = dict()
+			updates_count = await self.get_updates_count()
+			count = updates_count
+			updates_list = await self.get_updates()
+			entry_to_comment = self.parse_update(updates_list, 'comment', count)
+			for entry in entry_to_comment:
+				all_comments_from_entry = await self.get_comments_by_post_id(entry)
+				comment_tree = all_comments_from_entry.get_comments_by_id(entry_to_comment[entry]) # получаем комментарии с нужными id из всех комментариев записи в виде CommentTree  
+				new_comments_dict[entry] = comment_tree.get_all_comments_as_dict()
+			return new_comments_dict
+		except Exception as e:
+			_error(e)
 	
 	async def __get_all_my_coms(self):
 		"""Приватный метод для получения всех своих комментариев"""
@@ -120,7 +121,8 @@ class DTF:
 			replies = dict()
 			com_to_entry_dict = await self.__get_all_my_coms()
 			for com_id in com_to_entry_dict.keys():
-				replies[int(com_id)] = await self.__get_child_comment(com_id, com_to_entry_dict[com_id])
+				replies_list = await self.__get_child_comment(com_id, com_to_entry_dict[com_id])
+				replies[int(com_id)] = CommentTree(replies_list, -1).get_all_comments_as_dict()
 			return replies
 		except Exception as e:
 			print(e)
@@ -129,19 +131,23 @@ class DTF:
 	async def get_comment_tree(self, comment_id):
 		"""
 			Получение дерева комментариев (имея id комментария)
-			Дерево строится с включением всех комментариев, принадлежащих одной ветке.
+			Дерево строится  по ответам, принадлежащим одной ветке.
 		"""
 		try:
 			response = await self.execute_response(f"/comment/{comment_id}")
 			author_id = response['result']['author']['id']
 			entry_id = await self.__get_entry_by_comment_id(int(comment_id), author_id)
+			entry_text = await self.get_text_entry_by_id(entry_id)
 			response =  await self.execute_response(f"/entry/{entry_id}/comments/thread/{comment_id}")
 			all_comments = response['result']['items']
 			for index, el in enumerate(all_comments):
 				all_comments[index] = await self.__pars_comment(el)
-			return await CommentTree(all_comments, entry_id).make_comment_tree()
+			comment_tree = CommentTree(all_comments, entry_id)
+			processed_comments = await comment_tree.make_comment_tree_v2(comment_id)
+			processed_comments[0] = entry_text
+			return processed_comments
 		except Exception as e:
-			print(e)
+			_error(e)
 			return None
 
 	async def __pars_comment(self, comment_json):
@@ -182,14 +188,14 @@ class DTF:
 					_error(f"Status code is {response.status}")
 					return None
 	
-	async def send_to_model(comment:Comment):
+	async def send_to_model(self, comment:Comment):
 		#FIXME method 
 		"""
 			Метод для отправки в модель дерева комментариев.
 			Так как метод еще не дописан(не продумана система отправки) шаблон будет следующим.
 		"""
 		async with aiohttp.ClientSession(headers=self._header) as session: 
-			async with session.post(self._url + "/comment/add", data=template) as response:
+			async with session.post(self._url + "/comment/add") as response:
 				if response.status == requests.codes.ok: 
 					data = await response.json()
 					return data
@@ -202,7 +208,7 @@ class DTF:
 	async def get_updates(self):
 		url = 'https://api.dtf.ru/v1.9/user/me/updates?is_read=1'
 		async with aiohttp.ClientSession(headers=self._header) as session: 
-			async with session.get(url) as response:
+			async with session.get(url,  ssl=False) as response:
 				if response.status == requests.codes.ok: 
 					data = await response.json()
 					return data
@@ -215,7 +221,7 @@ class DTF:
 	async def get_updates_count(self):
 		url = 'https://api.dtf.ru/v1.9/user/me/updates/count'
 		async with aiohttp.ClientSession(headers=self._header) as session: 
-			async with session.get(url) as response:
+			async with session.get(url, ssl=False) as response:
 				if response.status == requests.codes.ok: 
 					data = await response.json()
 					return data['result']['count']
@@ -236,8 +242,20 @@ class DTF:
 			if data[i]['icon'] == type:
 				splited_url = data[i]['url'].split('/')[5]
 				entry_id = int(splited_url.split('-')[0])
-				print(splited_url)
 				comment_id = int(splited_url.split('=')[-1])
 				updates.setdefault(entry_id, list()).append(comment_id)
-				print(f"entry:{entry_id}, comment_id:{comment_id}")
 		return updates
+<<<<<<< HEAD
+=======
+
+	async def get_text_entry_by_id(self, entry_id:int)->str:
+		try:
+			response = await self.execute_response(f"/entry/{entry_id}")
+			parsed_entry = self.__EntryParser.parse_entry(response['result'])
+			result_str = f"{parsed_entry['title']} {parsed_entry['intro']}"
+			return result_str
+		except Exception as e:
+			_error(e)
+
+# FIXME IDEA: использовать HTTPException для возврата клиенту кода ошибки. Но на сколько это нужно?¿
+>>>>>>> 2937ddb3589ceffba24b0e84dee4aeae8d637ea9
