@@ -2,6 +2,8 @@ import requests
 import aiohttp
 from signalization import _error, _info
 from comment import Comment, CommentTree
+import asyncio
+import time
 
 from DTF_parser import EntryParser
 
@@ -21,13 +23,42 @@ class DTF:
 		self._token = token
 		self._url = 'https://api.dtf.ru/v1.9'
 		self._header = {'X-Device-Token': token}
-		self.tasks = asyncoi.Queue()
+		self.semaphore = asyncio.Semaphore(3)
+		self.tasks = set()
 
-	async def execute_response(self, query, repeat=False):
-		await self.tasks.put(self.do_query(query))
-		return 
+	async def task_loop(self):
+		while True:
+			count = len(self.tasks)
+			if count:
+				start = time.time()
+				await asyncio.gather(*self.tasks)
+				processed_time = time.time() - start
+				_info(f"[{time.time()}]{processed_time}s need to process for {count} tasks.")
+				if processed_time < 1:
+					await asyncio.sleep(1 - processed_time)
+			else:
+				await asyncio.sleep(1)
 
-	async def do_query(self, query, repeat=False):
+	async def execute_response(self, query, repeat=False, query_path = ""):
+
+		async def do_task(query, repeat=False): 
+			#Ограничение в 3 запроса в секунду поставим с использованием семафора.
+			async with self.semaphore: #Отметка о блокировке семафора
+				response = await self.get_query(query_path + query, repeat)			
+			return response
+		try:
+			task = asyncio.create_task(do_task(query, repeat))
+			self.tasks.add(task)
+			task.add_done_callback(self.tasks.discard) #Удаляем по завершение
+			while not task.done():
+				await asyncio.sleep(0.1)
+			done = task.result()
+			return done
+		except Exception as e:
+			print(e)
+
+		
+	async def get_query(self, query, repeat=False):
 		"""Search the web for a query""" 
 		async with aiohttp.ClientSession(headers=self._header) as session: 
 			async with session.get(self._url + query, ssl=False) as response:
@@ -45,7 +76,6 @@ class DTF:
 				else:
 					_error(f"Status code is {response.status}")
 					return None
-
 	async def get_all_my_entries(self):
 		"""Получение списка всех записей пользователя с токеном token"""
 		try:
@@ -134,6 +164,7 @@ class DTF:
 			Дерево строится  по ответам, принадлежащим одной ветке.
 		"""
 		try:
+			start = time.time()
 			response = await self.execute_response(f"/comment/{comment_id}")
 			author_id = response['result']['author']['id']
 			entry_id = await self.__get_entry_by_comment_id(int(comment_id), author_id)
@@ -145,7 +176,10 @@ class DTF:
 			comment_tree = CommentTree(all_comments, entry_id)
 			processed_comments = await comment_tree.make_comment_tree_v2(comment_id)
 			processed_comments[0] = entry_text
+			full = time.time() - start
+			_info(f"Make Comment Tree method time:{full}")
 			return processed_comments
+
 		except Exception as e:
 			_error(e)
 			return None
@@ -188,48 +222,13 @@ class DTF:
 					_error(f"Status code is {response.status}")
 					return None
 	
-	async def send_to_model(self, comment:Comment):
-		#FIXME method 
-		"""
-			Метод для отправки в модель дерева комментариев.
-			Так как метод еще не дописан(не продумана система отправки) шаблон будет следующим.
-		"""
-		async with aiohttp.ClientSession(headers=self._header) as session: 
-			async with session.post(self._url + "/comment/add") as response:
-				if response.status == requests.codes.ok: 
-					data = await response.json()
-					return data
-				elif response.status == 401:
-					_info("Unexpected troubles with the API-Key.")
-				else:
-					_error(f"Status code is {response.status}")
-					return None
-	
 	async def get_updates(self):
-		url = 'https://api.dtf.ru/v1.9/user/me/updates?is_read=1'
-		async with aiohttp.ClientSession(headers=self._header) as session: 
-			async with session.get(url,  ssl=False) as response:
-				if response.status == requests.codes.ok: 
-					data = await response.json()
-					return data
-				elif response.status == 401:
-					_info("Unexpected troubles with the API-Key.")
-				else:
-					_error(f"Status code is {response.status}")
-					return None
+		response = await self.execute_response("/user/me/updates?is_read=1")
+		return response
 
 	async def get_updates_count(self):
-		url = 'https://api.dtf.ru/v1.9/user/me/updates/count'
-		async with aiohttp.ClientSession(headers=self._header) as session: 
-			async with session.get(url, ssl=False) as response:
-				if response.status == requests.codes.ok: 
-					data = await response.json()
-					return data['result']['count']
-				elif response.status == 401:
-					_info("Unexpected troubles with the API-Key.")
-				else:
-					_error(f"Status code is {response.status}")
-					return None
+		response = await self.execute_response('/user/me/updates/count')
+		return response['result']['count']
 
 	def parse_update(self, json_updates:dict, type:str, count:int):
 		"""type - может быть comment/reply/like_up"""
