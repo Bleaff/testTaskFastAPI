@@ -29,7 +29,7 @@ class DTF:
 	async def task_loop(self):
 		while True:
 			count = len(self.tasks)
-			if count:
+			if count >= 2:
 				start = time.time()
 				await asyncio.gather(*self.tasks)
 				processed_time = time.time() - start
@@ -244,8 +244,6 @@ class DTF:
 				comment_id = int(splited_url.split('=')[-1])
 				updates.setdefault(entry_id, list()).append(comment_id)
 		return updates
-<<<<<<< HEAD
-=======
 
 	async def get_text_entry_by_id(self, entry_id:int)->str:
 		try:
@@ -257,4 +255,3 @@ class DTF:
 			_error(e)
 
 # FIXME IDEA: использовать HTTPException для возврата клиенту кода ошибки. Но на сколько это нужно?¿
->>>>>>> 2937ddb3589ceffba24b0e84dee4aeae8d637ea9
