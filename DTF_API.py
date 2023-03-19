@@ -29,18 +29,19 @@ class DTF:
 	async def task_loop(self):
 		while True:
 			count = len(self.tasks)
-			if count >= 2:
+			if count: # Если есть задачи, то они выполняются, если задач нет, то цикл ждеь секунду
 				start = time.time()
-				await asyncio.gather(*self.tasks)
+				await asyncio.gather(*self.tasks) # Ждем выполнения задачи
 				processed_time = time.time() - start
-				_info(f"[{time.time()}]{processed_time}s need to process for {count} tasks.")
+				self.tasks = set() # Обнуляем список задач сразу после выполнения
+				# _info(f"[{time.time()}]{processed_time}s need to process for {count} tasks.")
 				if processed_time < 1:
 					await asyncio.sleep(1 - processed_time)
+				_info(f"[{time.time()}]{time.time() - start}s need to process for {count} tasks.")
 			else:
 				await asyncio.sleep(1)
 
 	async def execute_response(self, query, repeat=False, query_path = ""):
-
 		async def do_task(query, repeat=False): 
 			#Ограничение в 3 запроса в секунду поставим с использованием семафора.
 			async with self.semaphore: #Отметка о блокировке семафора
@@ -49,15 +50,14 @@ class DTF:
 		try:
 			task = asyncio.create_task(do_task(query, repeat))
 			self.tasks.add(task)
-			task.add_done_callback(self.tasks.discard) #Удаляем по завершение
+			# task.add_done_callback(self.tasks.discard) #Удаляем по завершение
 			while not task.done():
 				await asyncio.sleep(0.1)
 			done = task.result()
 			return done
 		except Exception as e:
-			print(e)
+			_error(e)
 
-		
 	async def get_query(self, query, repeat=False):
 		"""Search the web for a query""" 
 		async with aiohttp.ClientSession(headers=self._header) as session: 
@@ -76,6 +76,7 @@ class DTF:
 				else:
 					_error(f"Status code is {response.status}")
 					return None
+
 	async def get_all_my_entries(self):
 		"""Получение списка всех записей пользователя с токеном token"""
 		try:
