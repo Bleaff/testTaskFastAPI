@@ -1,7 +1,7 @@
 import requests
 import aiohttp
 from signalization import _error, _info
-from comment import Comment, CommentTree
+from Comment import Comment, CommentTree
 import asyncio
 import time
 from random import randint
@@ -263,9 +263,15 @@ class DTF:
 	async def request_periodic_time(self):
 		while True:
 			wait_for = randint(50_000, 86_400) # Берем рандомное число секунд, через какое время начнут присылаться ответы на комментарии
+			await asyncio.sleep(wait_for)
+			updates = self.get_new_comments()
 
 
 
 
 
-# FIXME IDEA: использовать HTTPException для возврата клиенту кода ошибки. Но на сколько это нужно?¿
+
+# Изменить парс записей
+# Добавить методы отслеживания изменений записи
+# Исправить метод получения новых комментариев
+# Проверить работу set по удалению одинаковых записей из множеств

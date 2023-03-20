@@ -1,6 +1,9 @@
 from signalization import _error
+from math import ceil
+from random import choices
 
 class Comment:
+	"""Класс комментария, содержащий поля id, имя автора, на какой комментарий является ответом текущий комментарий, текст комментария, уровень вложенности и дату"""
 	def __init__(self, id, auth_name, reply_to, text, lvl, date):
 		self.id = id
 		self.author_name = auth_name
@@ -9,6 +12,7 @@ class Comment:
 		self.level = lvl
 		self.time = date
 		self.answers = []
+	
 	def __str__(self) -> str:
 		"""Trail version of this method"""
 		return f"{self.author_name}: {self.text} <|endofstatement|>"
@@ -19,6 +23,7 @@ class Comment:
 	def get_reply(self):
 		"""Метод возвращает id комментария, ответом на который ялвяется текущий коммент"""
 		return  self.reply_to
+	
 	def get_text(self) -> str:
 		return self.text
 
@@ -36,7 +41,7 @@ class CommentTree:
 		self.entry_id = entry_id
 		self.comment_tree = []
 
-	async def make_comment_tree(self, comment_id):
+	async def make_comment_tree(self, comment_id)->list:
 		"""Алгоритм построения остортированного списка комментариев вверх от переданного comment_id."""
 		try:
 			list_of_comments = self.get_all_comments()
@@ -83,7 +88,7 @@ class CommentTree:
 				result.append(comment)
 		return CommentTree(result, self.entry_id)
 	
-	def __repr__(self):
+	def __repr__(self)->str:
 		return f"{self.__class__}: with entry_id {self.entry_id}"
 
 	def __str__(self) -> str:
@@ -101,7 +106,7 @@ class CommentTree:
 				result.append(comment.__dict__)
 		return result
 
-	def get_comment_tree_as_dict(self):
+	def get_comment_tree_as_dict(self)->dict:
 		result = []
 		for comment in self.comment_tree:
 				result.append(comment.__dict__)
@@ -113,10 +118,22 @@ class CommentTree:
 			result += str(comment) + "\n"
 		return result
 
-	def get_next_comment(self, cur_comment) -> Comment:
+	def get_next_comment(self, cur_comment)->Comment:
 		"""Движение от последнего комментария наверх"""
 		if isinstance(cur_comment, Comment):
 			return self.get_comment_by_id(cur_comment.get_reply())
 		else:
 			curent_comment = self.get_comment_by_id(cur_comment)
 			return self.get_comment_by_id(curent_comment.get_reply())
+	
+	def get_n_percent(self, n=40)->list:
+		"""Возвращает список n% от всех имеющихся в CommentTree комментариев"""
+		size_of_n = ceil(len(self.all_comments) * n / 100)
+		return choices(self.all_comments, k=size_of_n)
+	
+	def get_comments_without_author(self, author_name)->CommentTree:
+		comments_without_author = []
+		for comment in self.all_comments:
+			if author_name != comment.auth_name:
+				comments_by_author.append(comment)
+		return CommentTree(comments_without_author, self.entry_id)
