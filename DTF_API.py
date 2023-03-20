@@ -4,6 +4,7 @@ from signalization import _error, _info
 from comment import Comment, CommentTree
 import asyncio
 import time
+from random import randint
 
 from DTF_parser import EntryParser
 
@@ -45,7 +46,11 @@ class DTF:
 		async def do_task(query, repeat=False): 
 			#Ограничение в 3 запроса в секунду поставим с использованием семафора.
 			async with self.semaphore: #Отметка о блокировке семафора
-				response = await self.get_query(query_path + query, repeat)			
+				start = time.time()
+				response = await self.get_query(query_path + query, repeat)
+				process_time = time.time() - start
+				if process_time < 1:
+					await asyncio.sleep(1 - process_time)
 			return response
 		try:
 			task = asyncio.create_task(do_task(query, repeat))
@@ -103,8 +108,8 @@ class DTF:
 		"""Получение новых комментариев к записям пользователя с токеном token"""
 		try:
 			new_comments_dict = dict()
-			updates_count = await self.get_updates_count()
-			count = updates_count
+			count = await self.get_updates_count()
+			print("Count of new event:",count)
 			updates_list = await self.get_updates()
 			entry_to_comment = self.parse_update(updates_list, 'comment', count)
 			for entry in entry_to_comment:
@@ -254,5 +259,13 @@ class DTF:
 			return result_str
 		except Exception as e:
 			_error(e)
+
+	async def request_periodic_time(self):
+		while True:
+			wait_for = randint(50_000, 86_400) # Берем рандомное число секунд, через какое время начнут присылаться ответы на комментарии
+
+
+
+
 
 # FIXME IDEA: использовать HTTPException для возврата клиенту кода ошибки. Но на сколько это нужно?¿
