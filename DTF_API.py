@@ -5,8 +5,7 @@ from Comment import Comment, CommentTree
 import asyncio
 import time
 from random import randint
-
-from DTF_parser import EntryParser
+from Entry import *
 
 class DTF:
 	"""
@@ -20,12 +19,12 @@ class DTF:
 	"""
 	def __init__(self, token):
 		"""Заполнение поля token, инициализация необходимых параметров."""
-		self.__EntryParser = EntryParser()
 		self._token = token
 		self._url = 'https://api.dtf.ru/v1.9'
 		self._header = {'X-Device-Token': token}
 		self.semaphore = asyncio.Semaphore(3)
 		self.tasks = set()
+		self.entries = []
 
 	async def task_loop(self):
 		while True:
@@ -85,12 +84,16 @@ class DTF:
 	async def get_all_my_entries(self):
 		"""Получение списка всех записей пользователя с токеном token"""
 		try:
-			summarize = {'message':[]}
+			summarize = []
 			response = await self.execute_response("/user/me/entries")
-			for entry in response['result']:
-				comments = await self.execute_response(f"/entry/{entry['id']}/comments")
-				comments_id = {id['id'] for id in comments['result']}
-				summarize['message'].append(self.__EntryParser.parse_entry(entry, comments_id))
+			for entry_json in response['result']:
+				entry = Entry(entry_json, comments)
+				comments = await self.execute_response(f"/entry/{entry_json['id']}/comments")
+				comments_list = [self._pars_comment(comment) for comment in comments['result']]
+				com_tree = CommentTree(comments_list, entry.id)
+				entry.all_comments = com_tree
+				self.entries.append(entry)
+				summarize.append(entry.get_entry_as_dict())
 			return summarize
 		except Exception as e:
 			_error(e)

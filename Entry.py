@@ -1,6 +1,6 @@
-from Comment import *
+from Comment import Comment, CommentTree
 class Entry:
-    def __init__(self, json_entry, comments: CommentTree):
+    def __init__(self, json_entry, comments: CommentTree = None):
         self.id = json_entry['id']
         self.title = json_entry['title']
         self.intro = json_entry['intro']
@@ -29,12 +29,12 @@ class Entry:
         new = Entry()
         return CommentTree(list(difference), self.id)
     
-    def set_updates(self, new:Entry)->CommentTree:
-        """Устанавливает обновленные комментарии в записи. Возвращает комментарии, очищенные от комментариев автора."""
+    def set_updates(self, new)->CommentTree:
+        """Устанавливает обновленные комментарии в записи. Возвращает новые комментарии, очищенные от комментариев автора."""
         if self.id == new.id:
             self.all_comments = new.all_comments.get_all_comments()
             self.comments_count = new.comments_count
             self.all_comments = new.all_comments.get_all_comments()
-            res = self.__sub__(new).get_comments_without_author(self.auth_name)
-            return 
+            return self.__sub__(new).get_comments_without_author(self.auth_name)
+             
 

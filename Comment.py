@@ -131,7 +131,7 @@ class CommentTree:
 		size_of_n = ceil(len(self.all_comments) * n / 100)
 		return choices(self.all_comments, k=size_of_n)
 	
-	def get_comments_without_author(self, author_name)->CommentTree:
+	def get_comments_without_author(self, author_name):
 		comments_without_author = []
 		for comment in self.all_comments:
 			if author_name != comment.auth_name:
