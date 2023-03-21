@@ -7,16 +7,17 @@ class Entry:
         self.all_comments = comments
         self.auth_id = json_entry["author"]["id"]
         self.auth_name = json_entry["author"]["name"]
-        self.comments_count = len(self.all_comments)
+        self.comments_count = len(self.all_comments) if comments is not None else 0
         self.my_comments = comments
     
-    def get_entry_as_dict()->dict:
+    def get_entry_as_dict(self)->dict:
         result = {
                     "id": self.id,
                     "title": self.title,
                     "intro": self.intro,
                     "comments": self.all_comments.get_all_comments_as_dict()
                 }
+        return result
     
     def __str__(self)->str:
         return self.intro + '\n' + self.title

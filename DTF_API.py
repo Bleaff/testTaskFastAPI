@@ -87,9 +87,9 @@ class DTF:
 			summarize = []
 			response = await self.execute_response("/user/me/entries")
 			for entry_json in response['result']:
-				entry = Entry(entry_json, comments)
+				entry = Entry(entry_json)
 				comments = await self.execute_response(f"/entry/{entry_json['id']}/comments")
-				comments_list = [self._pars_comment(comment) for comment in comments['result']]
+				comments_list = [self._parse_comment(comment) for comment in comments['result']]
 				com_tree = CommentTree(comments_list, entry.id)
 				entry.all_comments = com_tree
 				self.entries.append(entry)
@@ -102,7 +102,7 @@ class DTF:
 		"""Получение всех комментариев к записи с id записи в виде дерева."""
 		try:
 			response = await self.execute_response(f"/entry/{id}/comments/{flag}")
-			all_comments =  [await self.__pars_comment(com) for com in response['result']]
+			all_comments =  [self._parse_comment(com) for com in response['result']]
 			return CommentTree(all_comments, id)
 		except Exception as e:
 			_error(e)
@@ -138,7 +138,7 @@ class DTF:
 			all_comments_in_entry = await self.execute_response(f"/entry/{entry_id}/comments/popular")
 			answers = [comment for comment in all_comments_in_entry['result'] if int(comment['replyTo']) == int(parent_id)]
 			for index, el in enumerate(answers):
-				answers[index] = await self.__pars_comment(el)
+				answers[index] = self._parse_comment(el)
 			return answers
 		except Exception as e:
 			_error(e)
@@ -181,7 +181,7 @@ class DTF:
 			response =  await self.execute_response(f"/entry/{entry_id}/comments/thread/{comment_id}")
 			all_comments = response['result']['items']
 			for index, el in enumerate(all_comments):
-				all_comments[index] = await self.__pars_comment(el)
+				all_comments[index] = self._parse_comment(el)
 			comment_tree = CommentTree(all_comments, entry_id)
 			processed_comments = await comment_tree.make_comment_tree_v2(comment_id)
 			processed_comments[0] = entry_text
@@ -193,7 +193,7 @@ class DTF:
 			_error(e)
 			return None
 
-	async def __pars_comment(self, comment_json):
+	def _parse_comment(self, comment_json):
 		"""Метод парсинга комментария с json в словарь"""
 		try:
 			comment = Comment(comment_json['id'],
