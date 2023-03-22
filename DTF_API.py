@@ -25,21 +25,22 @@ class DTF:
 		self.semaphore = asyncio.Semaphore(3)
 		self.tasks = set()
 		self.entries = []
+		self.task_id = 0
 
 	async def task_loop(self):
 		while True:
 			count = len(self.tasks)
-			if count: # Если есть задачи, то они выполняются, если задач нет, то цикл ждеь секунду
+			if count: # Если есть задачи, то они выполняются, если задач нет, то цикл ждет
 				start = time.time()
-				await asyncio.gather(*self.tasks) # Ждем выполнения задачи
+				lst = await asyncio.gather(*self.tasks) # Ждем выполнения задачи
 				processed_time = time.time() - start
-				self.tasks = set() # Обнуляем список задач сразу после выполнения
-				# _info(f"[{time.time()}]{processed_time}s need to process for {count} tasks.")
-				if processed_time < 1:
-					await asyncio.sleep(1 - processed_time)
-				_info(f"[{time.time()}]{time.time() - start}s need to process for {count} tasks.")
+				# self.tasks = set() # Обнуляем список задач сразу после выполнения
+				_info(f"[{time.time()}]{processed_time}s need to process for {len(lst)}/{count} tasks.")
+				# if processed_time < 1:
+				# 	await asyncio.sleep(1 - processed_time)
+				# _info(f"[{time.time()}]{time.time() - start}s total iteration time for {len(lst)}/{count} tasks.")
 			else:
-				await asyncio.sleep(1)
+				await asyncio.sleep(.1)
 
 	async def execute_response(self, query, repeat=False, query_path = ""):
 		async def do_task(query, repeat=False): 
@@ -52,12 +53,15 @@ class DTF:
 					await asyncio.sleep(1 - process_time)
 			return response
 		try:
-			task = asyncio.create_task(do_task(query, repeat))
-			self.tasks.add(task)
-			# task.add_done_callback(self.tasks.discard) #Удаляем по завершение
+			self.tasks.add(do_task(query, repeat))
+			self.task_id += 1	#DEBUG
+			cur_t_i = self.task_id #DEBUG
+			print(f"Set task ({len(self.tasks)}) with id {cur_t_i} and name {task.get_name()}")#DEBUG
+			task.add_done_callback(self.tasks.discard) #Удаляем по завершение
 			while not task.done():
 				await asyncio.sleep(0.1)
 			done = task.result()
+			print(f"Done task ({len(self.tasks)}) with id {cur_t_i} and name {task.get_name()}")#DEBUG
 			return done
 		except Exception as e:
 			_error(e)

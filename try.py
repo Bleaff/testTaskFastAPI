@@ -1,23 +1,14 @@
+import aiohttp
 import asyncio
+import time
 
-class a:
-	def __init__(self, a):
-		self.a = a
-		self.res = self.check()
+async def ddos(num = 10):
+	for i in range(num):
+		start = time.time()
+		async with aiohttp.ClientSession() as session:
+			async with session.get('http://127.0.0.1:8000/get_reply_to_my_comments', ssl=False) as resp:
+				await resp.text()
+				end = time.time() - start
+				print(f"id_{i} in {end}'s done")
 
-	async def slp(self):
-		await asyncio.sleep(.3)
-		return {"Gut"}
-
-	def run_in_init(func):
-		async def wrapper(func):
-			return await func()
-		return await wrapper
-
-	@run_in_init
-	async def check(self):
-		return await self.slp()
-
-
-ob = a("fsc")
-print(ob.a)
+asyncio.run(ddos(100))
