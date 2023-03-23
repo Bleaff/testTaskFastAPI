@@ -10,19 +10,40 @@ from Entry import *
 class DTF:
 	"""
 	Класс для соединения с сервисом OsnovaApi (Tjournal, DTF, VC).
-		Данный класс предоставляет методы взаимодействия с сервисом DTF.
-		Поддерживает такие методы как:
+		Данный класс в автоматическом режиме получает набор комментариев на заданный список записей.
+		Содержит методы, такие как: 
 			Отправка комментариев в ответ.
 			Получение списка новых комментариев.
 			Построение дерева комментариев.
 			Просмотр всех записей, принадлежащих пользователю с токеном 'token'.
 	"""
+
+
+	"""
+		PLAN:
+			methods:
+				- async def task_loop(self) - метод, обеспечивающий ограничение на кол-во запросов к серверу osnovaAPI до 3 в секунду
+				- *(async) def periodic_query(self) - метод для выполнения раза в сутки заданных действий *(может быть декоратором синхронныи\асинхронным)
+				- async def get_updates(self) - метод для получения новых комментарев к записям, находящимся в списке entries
+				- async def post_comment(self, entry_id, comment_id) - метод для ответа/комментирования на комментарий/поста
+				- async def get_all_my_comments(self) - служебный метод для получения своих комментариев (основная задача:сравнение своего комментария и рандомного в списке случайных комментариев, чтобы не ответить самому себе)
+				- async def get_request(self, query_path='', query) - метод для отправки запроса на сервер, должен быть обработан, завернут в задачу и поставлен в очередь
+
+			fields:
+				- token, url, header, container for task loop tasks, entries which are folowed
+				- entiti_list (entity with different charachters, described as an object)?
+
+	"""
+
+
+
+
 	def __init__(self, token):
 		"""Заполнение поля token, инициализация необходимых параметров."""
 		self._token = token
 		self._url = 'https://api.dtf.ru/v1.9'
 		self._header = {'X-Device-Token': token}
-		self.semaphore = asyncio.Semaphore(3)
+		self.semaphore = asyncio.Queue()
 		self.tasks = set()
 		self.entries = []
 		self.task_id = 0
