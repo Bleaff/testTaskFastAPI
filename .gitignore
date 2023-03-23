@@ -1,0 +1,9 @@
+fastapi/
+
+check
+
+.vscode
+
+.ipynb_checkpoints
+
+__pycache__
