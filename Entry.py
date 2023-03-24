@@ -4,21 +4,26 @@ class Entry:
         self.id = json_entry['id']
         self.title = json_entry['title']
         self.intro = json_entry['intro']
-        self.all_comments = comments
+        self.comments = comments
         self.auth_id = json_entry["author"]["id"]
         self.auth_name = json_entry["author"]["name"]
-        self.comments_count = len(self.all_comments) if comments is not None else 0
+        self.comments_count = len(self.comments) if comments is not None else 0
         self.my_comments = comments
     
     def get_entry_as_dict(self)->dict:
         result = {
                     "id": self.id,
                     "title": self.title,
-                    "intro": self.intro,
-                    "comments": self.all_comments.get_all_comments_as_dict()
+                    "intro": self.intro ,
+                    "comments": self.comments.get_all_comments_as_dict(),
+                    "comments_count":self.comments_count
                 }
         return result
     
+    def set_comments(self, new_comments: CommentTree)->None:
+        self.comments = new_comments
+        self.comments_count = len(self.comments.all_comments)
+
     def __str__(self)->str:
         return self.intro + '\n' + self.title
     
@@ -31,11 +36,9 @@ class Entry:
         return CommentTree(list(difference), self.id)
     
     def set_updates(self, new)->CommentTree:
-        """Устанавливает обновленные комментарии в записи. Возвращает новые комментарии, очищенные от комментариев автора."""
+        """Устанавливает обновленные комментарии в записи. Возвращает новые комментарии, очищенные от комментариев автора.
+            new - обвновленная версия записи."""
         if self.id == new.id:
-            self.all_comments = new.all_comments.get_all_comments()
-            self.comments_count = new.comments_count
-            self.all_comments = new.all_comments.get_all_comments()
+            self.set_comments(new.comments)
             return self.__sub__(new).get_comments_without_author(self.auth_name)
-             
-
+    

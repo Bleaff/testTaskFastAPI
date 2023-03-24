@@ -1,18 +1,44 @@
+from random import random
 import asyncio
-async def factorial(name, number):
-    f = 1
-    for i in range(2, number + 1):
-        print(f"Task {name}: Compute factorial({i})...")
-        await asyncio.sleep(1)
-        f *= i
-    print(f"Task {name}: factorial({number}) = {f}")
-
-async def main():
-    # Запланировать дерево вызовов *конкурентно*:
-    coro_list = [factorial("A", 2),factorial("B", 3),factorial("C", 4), factorial("D", 4), factorial("E", 5)]
-    tasks = [asyncio.create_task(coro) for coro in coro_list] 
+ 
+# coroutine to generate work
+async def producer(queue):
+    print('Producer: Running')
+    # generate work
+    for i in range(100):
+        # generate a value
+        value = random()
+        # block to simulate work
+        await asyncio.sleep(value)
+        # add to the queue
+        await queue.put(value)
+    print('Producer: Done')
+ 
+# coroutine to consume work
+async def consumer(queue):
+    print('Consumer: Running')
+    # consume work
     while True:
-        await asyncio.gather(*tasks)
-        tasks = [asyncio.create_task(coro) for coro in coro_list] 
-
+        # get a unit of work
+        item = await queue.get()
+        # report
+        print(f'>got {item}')
+        # block while processing
+        if item:
+            await asyncio.sleep(item)
+        # mark the task as done
+        queue.task_done()
+ 
+# entry point coroutine
+async def main():
+    # create the shared queue
+    queue = asyncio.Queue()
+    # start the consumer
+    _ = asyncio.create_task(consumer(queue))
+    # start the producer and wait for it to finish
+    await asyncio.create_task(producer(queue))
+    # wait for all items to be processed
+    await queue.join()
+ 
+# start the asyncio program
 asyncio.run(main())
