@@ -29,10 +29,9 @@ class Entry:
     
     def __sub__(self, other)->CommentTree: # - вычитание (x - y)
         """Возвращает CommentTree новых комментариев"""
-        set_self = set(self.all_comments.get_all_comments())
-        set_other = set(other.all_comments.get_all_comments())
+        set_self = set(self.comments.get_all_comments_as_dict())
+        set_other = set(other.comments.get_all_comments_as_dict())
         difference = set_other - set_self
-        new = Entry()
         return CommentTree(list(difference), self.id)
     
     def set_updates(self, new)->CommentTree:

@@ -40,6 +40,7 @@ class CommentTree:
 		self.all_comments = comments_list
 		self.entry_id = entry_id
 		self.comment_tree = []
+		self.list_of_id = []
 
 	async def make_comment_tree(self, comment_id)->list:
 		"""Алгоритм построения остортированного списка комментариев вверх от переданного comment_id."""

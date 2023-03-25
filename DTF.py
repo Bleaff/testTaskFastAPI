@@ -251,10 +251,7 @@ class DTF:
 		res = [entr.get_entry_as_dict() for entr in self.entries]
 		return res
 	
-	async def follow_entry(self, entry_id:int)->None:
-		"""
-			Метод добавления записи для отслеживания ботом
-		"""
+	async def get_full_entry(self, entry_id):
 		try:
 			entry_json = await self.execute_response(f"/entry/{entry_id}")
 			comments = await self.execute_response(f"/entry/{entry_id}/comments")
@@ -262,17 +259,35 @@ class DTF:
 			comments_list = [self._parse_comment(comment) for comment in comments['result']]
 			com_tree = CommentTree(comments_list, entry.id)
 			entry.set_comments(com_tree)
-			self.add_to_follow(entry)
+			return entry
 		except Exception as e:
 			_error(e)
+
+	async def follow_entry(self, entry_id:int)->None:
+		"""
+			Метод добавления записи для отслеживания ботом
+		"""
+		try:
+			entry = await self.get_full_entry(entry_id)
+			self.add_to_follow(entry)
 		except TypeError as te:
 			_error(f"Bad request was got:{e}")
+		except Exception as e:
+			_error(e)
+
 
 	def add_to_follow(self, entr: Entry)->None:
 		for entry in self.entries:
 			if entr.id == entry.id:
 				return 
 		self.entries.append(entr) 
+
+	async def update_followed_entries(self)->None:
+		for old_entry in self.entries:
+			new_entry = await self.get_full_entry(old_entry.id)
+			difference :CommentTree = old_entry.set_updates(new_entry) # получаем список комментариев, 
+
+
 
 
 
