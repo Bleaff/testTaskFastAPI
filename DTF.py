@@ -181,6 +181,18 @@ class DTF:
 		except Exception as e:
 			_error(e)
 
+	async def send_post_response(self, data): # Now is only for replies to comments
+		async with aiohttp.ClientSession(headers=self._header) as session: 
+			async with session.post(self._url + "/comment/add", data=data) as response:
+				if response.status == requests.codes.ok: 
+					data = await response.json()
+					return data
+				elif response.status == 401:
+					_info("Unexpected troubles with the API-Key.")
+				else:
+					_error(f"Status code is {response.status}")
+					return None
+
 	async def reply_to_comment(self, entry_id:int, reply_to:int, msg:str):
 		"""
 			Метод отправки ответа на комментарий или на запись с entry_id. 
@@ -194,16 +206,14 @@ class DTF:
 					}
 		if entry_id == 0:
 			return _error("Invalid entry id. Entry id is a required parameter!")
-		async with aiohttp.ClientSession(headers=self._header) as session: 
-			async with session.post(self._url + "/comment/add", data=template) as response:
-				if response.status == requests.codes.ok: 
-					data = await response.json()
-					return data
-				elif response.status == 401:
-					_info("Unexpected troubles with the API-Key.")
-				else:
-					_error(f"Status code is {response.status}")
-					return None
+		async with self.semaphore:
+			start = time.time()
+			response = await self.send_post_response(template)
+			if time.time() - start < 20:
+				await asyncio.sleep(20 - time.time() + start)
+			_info(f'[{start}]Time of request is {time.time() - start}')
+			return response
+		
 	
 	async def get_updates(self):
 		response = await self.execute_response("/user/me/updates?is_read=1")
@@ -239,22 +249,39 @@ class DTF:
 			_error(e)
 
 	async def request_periodic_time(self):
+		"""Метод с заданной периодичностью посылает запросы на osnovaAPI, для обновления данных об отслеживаемых записях. 
+			В данном методе запускается весь цикл от получения обновлений, до отправки ответа выбранным комментам."""
 		while True:
-			wait_for = randint(30, 40) # Берем рандомное число секунд, через какое время начнут присылаться ответы на комментарии
+			wait_for = randint(10, 20) # Берем рандомное число секунд, через какое время начнут присылаться ответы на комментарии
 			await asyncio.sleep(wait_for)
 			updates = await self.update_followed_entries()
 			if updates and  len(updates) :
 				choosen = await self.get_n_part_from_new_pool(50, updates)
 				for_model = await self.send_to_model(choosen) #Формируем данные для отправки в модель
-				print(for_model)
-				print("Model has done it's job!")
-
+				print('For model', for_model)
+				response = await self.simulate_model(for_model) #Получили ответ от модели, далее отвечаем на комменты
+				print('Got back', response)
+				for entry in response: #Ответили на полученные комменты
+					for answer in entry['answers']:
+						await self.reply_to_comment(entry['entry_id'], answer['reply_to'],	answer['text_reply']) 
 			else:
 				print("Nothing to update")
-
+########################################################################### ДЛЯ ВЛАДА
 # проверка работоспособности отделения новых и старых комментов 
+	async def get_answer_from_model(self, comemnt_list):
+		#Simulating model work
+		await asyncio.sleep(2)
+		return "answer_from_model"
 
-
+	async def simulate_model(self, data_for_model):
+		response_from_model = []
+		for entry in data_for_model:
+			ans_dict = {"entry_id":entry['entry_id'], 'answers':[]}
+			for commentTree in entry['CommentTrees']:
+				ans_dict['answers'].append({'reply_to':commentTree[0], 'text_reply':await self.get_answer_from_model(commentTree)}) #commentTree[0] -> id выбранного для ответа комментария
+			response_from_model.append(ans_dict)
+		return response_from_model
+####################################################################################
 	def get_followed_entries(self)->list:
 		"""
 			Метод получения записей, отслеживаемые ботом
@@ -336,6 +363,10 @@ class DTF:
 
 		
 
-
+	# async def _ans_to_all(self):
+	# 	entry = await self.get_full_entry(1296731)
+	# 	all_comments = entry.comments.get_all_comments_as_dict()
+	# 	for com in all_comments:
+	# 		await self.reply_to_comment(entry.id, com['id'], ".")
 
 

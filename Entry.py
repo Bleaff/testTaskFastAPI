@@ -25,7 +25,7 @@ class Entry:
         self.comments_count = len(self.comments.all_comments)
 
     def __str__(self)->str:
-        return self.intro + self.title
+        return self.intro + ' ' + self.title
 
     # @staticmethod
     # def copy_entry(entry:Entry)->Entry:

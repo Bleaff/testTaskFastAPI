@@ -1,14 +1,24 @@
-import aiohttp
-import asyncio
-import time
-
-async def ddos(num = 10):
-	for i in range(num):
-		start = time.time()
-		async with aiohttp.ClientSession() as session:
-			async with session.get('http://127.0.0.1:8000/get_reply_to_my_comments', ssl=False) as resp:
-				await resp.text()
-				end = time.time() - start
-				print(f"id_{i} in {end}'s done")
-
-asyncio.run(ddos(100))
+[
+    {
+        'entry_id': 1612676,
+        'CommentTrees': 
+            [
+                (23828003, 
+                [('Серёжа Сысоев', 'Ипользуя библиотеку requestsЭтап авторизации + запрос пройден'), 
+                 ('Artem Glechinsky', 'Новый коммент!_Ц()'),
+                 ('Artem Glechinsky', 'Круто!'), 
+                 ('Artem Glechinsky', 'Шиук!')])
+            ]
+    }, 
+    {
+        'entry_id': 1612527, 
+        'CommentTrees': 
+            [(23827992, 
+                [('Серёжа Сысоев', 'Первые шажки по парсу dtf.Hello world'), 
+                 ('Artem Glechinsky', 'qweqweq'), 
+                 ('Artem Glechinsky', 'sa'), 
+                 ('Artem Glechinsky', 'da'), 
+                 ('Artem Glechinsky', 'два уоммент')])
+            ]
+    }
+]
