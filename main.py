@@ -10,8 +10,9 @@ serv = FastAPI()
 @serv.on_event("startup")
 async def shedule_task_loop():
     serv.dtf = DTF(token = "79a24dbb2334b0a52a506db13f561cc006a6c2b52c12ed5ce2850eb5dd86a583")
-    # loop = asyncio.get_event_loop()
-    # loop.create_task(serv.dtf.task_loop())
+    loop = asyncio.get_event_loop()
+    loop.create_task(serv.dtf.get_all_my_entries())
+    loop.create_task(serv.dtf.request_periodic_time())
 
 
 @serv.get('/')

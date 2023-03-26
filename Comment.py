@@ -62,13 +62,14 @@ class CommentTree:
 			_error(e)
 	
 	async def make_comment_tree_v2(self, comment_id) -> list:
+	#FIXME ????
 		"""Алгоритм построения остортированного списка комментариев вверх от переданного comment_id.
 		Возвращаемое значение: list = [пост_id, 'коммент1', 'коммент2'...]"""
 		last_comment = self.get_comment_by_id(comment_id)
-		result_list = [last_comment.text]
+		result_list = [(last_comment.author_name, last_comment.text)]
 		next_comment = self.get_next_comment(comment_id)
 		while (next_comment):
-			result_list.append(next_comment.text)
+			result_list.append((next_comment.author_name, next_comment.text))
 			next_comment = self.get_next_comment(next_comment)
 		result_list.append(self.entry_id)
 		result_list.reverse()
@@ -136,8 +137,8 @@ class CommentTree:
 	def get_comments_without_author(self, author_name):
 		comments_without_author = []
 		for comment in self.all_comments:
-			if author_name != comment.auth_name:
-				comments_by_author.append(comment)
+			if author_name != comment.author_name:
+				comments_without_author.append(comment)
 		return CommentTree(comments_without_author, self.entry_id)
 	
 	def __len__(self):

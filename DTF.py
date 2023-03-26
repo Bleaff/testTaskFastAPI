@@ -57,20 +57,20 @@ class DTF:
 
 	async def get_all_my_entries(self):
 		"""Получение списка всех записей пользователя с токеном token"""
-		# try:
-		summarize = []
-		response = await self.execute_response("/user/me/entries")
-		for entry_json in response['result']:
-			entry = Entry(entry_json)
-			comments = await self.execute_response(f"/entry/{entry_json['id']}/comments")
-			comments_list = [self._parse_comment(comment) for comment in comments['result']]
-			com_tree = CommentTree(comments_list, entry.id)
-			entry.set_comments(com_tree)
-			self.add_to_follow(entry)
-			summarize.append(entry.get_entry_as_dict())
-		return summarize
-		# except Exception as e:
-		# 	_error(e)
+		try:
+			summarize = []
+			response = await self.execute_response("/user/me/entries")
+			for entry_json in response['result']:
+				entry = Entry(entry_json)
+				comments = await self.execute_response(f"/entry/{entry_json['id']}/comments")
+				comments_list = [self._parse_comment(comment) for comment in comments['result']]
+				com_tree = CommentTree(comments_list, entry.id)
+				entry.set_comments(com_tree)
+				self.add_to_follow(entry)
+				summarize.append(entry.get_entry_as_dict())
+			return summarize
+		except Exception as e:
+			_error(e)
 
 	async def get_comments_by_post_id(self, id, flag="popular") -> CommentTree:
 		"""Получение всех комментариев к записи с id записи в виде дерева."""
@@ -238,11 +238,22 @@ class DTF:
 		except Exception as e:
 			_error(e)
 
-	# async def request_periodic_time(self):
-	# 	while True:
-	# 		wait_for = randint(50_000, 86_400) # Берем рандомное число секунд, через какое время начнут присылаться ответы на комментарии
-	# 		await asyncio.sleep(wait_for)
-	# 		updates = self.get_new_comments()
+	async def request_periodic_time(self):
+		while True:
+			wait_for = randint(30, 40) # Берем рандомное число секунд, через какое время начнут присылаться ответы на комментарии
+			await asyncio.sleep(wait_for)
+			updates = await self.update_followed_entries()
+			if updates and  len(updates) :
+				choosen = await self.get_n_part_from_new_pool(50, updates)
+				for_model = await self.send_to_model(choosen) #Формируем данные для отправки в модель
+				print(for_model)
+				print("Model has done it's job!")
+
+			else:
+				print("Nothing to update")
+
+# проверка работоспособности отделения новых и старых комментов 
+
 
 	def get_followed_entries(self)->list:
 		"""
@@ -278,7 +289,6 @@ class DTF:
 
 
 	def add_to_follow(self, entr: Entry)->None:
-
 		for entry in self.entries:
 			if entr.id == entry.id:
 				return 
@@ -286,36 +296,46 @@ class DTF:
 
 	async def update_followed_entries(self)->list:
 		"""Обновление записей, находящихся в списке на обновлнение (self.entries).
-			Метод возвращает список Entry с исключительно новыми комментариями (не полный набор комментариев)"""
+			Метод возвращает список пар (NewEntry, NewCommentTree), где NewCommentTree с исключительно новыми комментариями (не полный набор комментариев)"""
 		new_comments_pool = []
-		for old_entry in self.entries:
+		for i, old_entry in enumerate(self.entries):
 			new_entry = await self.get_full_entry(old_entry.id)
-			new_comments_pool.append(old_entry.set_updates(new_entry)) # получаем список новых комментариев
+			if new_entry.comments_count == old_entry.comments_count:
+				continue														#Избавляемся от проверок, в случае остсутствия новых комментариев
+			new_comments_pool.append((new_entry, old_entry.set_updates(new_entry))) # получаем список новых комментариев, запечатанных в Entry
 		return new_comments_pool
 	
-	async def get_n_part_from_new_pool(self, n:int, new_pool : list)->CommentTree:
-		"""Отбор n% комментариев из числа новых комментоариев"""
-		#FIXME method!!!! Может быть узким горлышком
+	async def get_n_part_from_new_pool(self, n:int, new_pool : list)->list:
+		"""Отбор n% комментариев из числа новых комментариев"""
+		#FIXME удобен для запуска в отдельный поток
 		choosen_comments = []
-		for comment_tree in new_pool:
-			choosen_comments.append(comment_tree.get_n_percent(30))
+
+		for entry, com_tree in new_pool:
+			new_com_tree = com_tree.get_n_percent(n)
+			choosen_comments.append((entry, new_com_tree))
+
 		return choosen_comments
 	
-	async def send_to_model(to_send:list)->list:
-		"""Метод принимает на вход список объектов CommentTree с новыми значениями комментариев
-			Возвращаемое значение для каждого CommentTree:
-				[username: post, username:comment, username:comment ]"""
+	async def send_to_model(self,to_send:list)->list:
+	#FIXME method (ТЯЖЕЛЫЕ ВЫЧИСЛЕНИЯ)
+	#FIXME удобен для запуска в отдельный поток
+		"""Метод принимает на вход список пар (Entry, CommentTree) с новыми значениями комментариев
+			Возвращаемое значение для каждой пары  (Entry, CommentTree):
+				[[username: post, username:comment, username:comment, ... ], ..., []]"""
 		to_send_list = []
+		for entry, com_tree in to_send:
+			entry_dict = {'entry_id': entry.id, 'CommentTrees': []}
+			all_com = com_tree.get_all_comments()
+			for comment in all_com: #Строим для каждого комментария из выбранных свою цепочку 
+				tree = await entry.comments.make_comment_tree_v2(comment.id)
+				if len(tree):
+					tree[0] = (entry.auth_name, str(entry))
+				entry_dict['CommentTrees'].append((comment.id, tree))
+			to_send_list.append(entry_dict)
+		return to_send_list
+
 		
 
 
 
 
-
-
-
-
-
-# Добавить методы отслеживания изменений записи
-# Исправить метод получения новых комментариев
-# Проверить работу set по удалению одинаковых записей из множеств

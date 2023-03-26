@@ -25,32 +25,38 @@ class Entry:
         self.comments_count = len(self.comments.all_comments)
 
     def __str__(self)->str:
-        return self.intro + '\n' + self.title
+        return self.intro + self.title
 
-    @staticmethod
-    def copy_entry(entry:Entry)->Entry:
-        json_entry = {'id':entry.id, 
-                        'title':entry.title, 
-                        'intro':entry.intro,
-                        'author':{
-                            'id':entry.auth_id,
-                            'name':entry.auth_name}
-        }
-        return Entry(json_entry, entry.comments)
+    # @staticmethod
+    # def copy_entry(entry:Entry)->Entry:
+    #     json_entry = {'id':entry.id, 
+    #                     'title':entry.title, 
+    #                     'intro':entry.intro,
+    #                     'author':{
+    #                         'id':entry.auth_id,
+    #                         'name':entry.auth_name}
+    #     }
+    #     return Entry(json_entry, entry.comments)
     
-    def __sub__(self, other): # - вычитание (x - y)
-        """Возвращает Entry c только новыми комментариями."""
+    # def __sub__(self, other): # - вычитание (self - other) => self > other
+    #     """Возвращает CommentTree только c новыми комментариями."""
+    #     self_set_comments = set([comment['id'] for comment in self.comments.get_all_comments_as_dict()]) # Получаем множество комментариев в виде списка id комментариев, используем свойство их уникальности
+    #     other_set_comments = set([comment['id'] for comment in other.comments.get_all_comments_as_dict()]) 
+    #     difference = list(self_set_comments - other_set_comments) # Множество разности приводится к списку и затем подключаем комментарии по этим id
+    #     return self.comments.get_comments_by_id(difference)
+
+    def get_differ_comments(self, other):
+        """Возвращает CommentTree только c новыми комментариями."""
         self_set_comments = set([comment['id'] for comment in self.comments.get_all_comments_as_dict()]) # Получаем множество комментариев в виде списка id комментариев, используем свойство их уникальности
-        other_set_comments = set([comment['id'] for comment in other.comments.get_all_comments_as_dict()]) 
-        difference = list(set_other - set_self) # Множество разности приводится к списку и затем подключаем комментарии по этим id
-        diff_entry = Entry.copy_entry(other)
-        diff_entry.set_comments(other.comments.get_comments_by_id(difference)) 
-        return diff_entry
-    
-    def set_updates(self, new)->CommentTree:
+        other_set_comments = set([comment['id'] for comment in other.comments.get_all_comments_as_dict()])
+        difference = list(self_set_comments - other_set_comments) # Множество разности приводится к списку и затем подключаем комментарии по этим id
+        return self.comments.get_comments_by_id(difference)
+
+    def set_updates(self, new):
         """Устанавливает обновленные комментарии в записи. Возвращает новые комментарии, очищенные от комментариев автора.
             new - обвновленная версия записи."""
         if self.id == new.id:
+            difference = new.get_differ_comments(self)
             self.set_comments(new.comments)
-            return self.__sub__(new).comments.get_comments_without_author(self.auth_name)
+            return difference.get_comments_without_author(self.auth_name)
     
