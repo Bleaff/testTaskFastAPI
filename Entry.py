@@ -26,18 +26,31 @@ class Entry:
 
     def __str__(self)->str:
         return self.intro + '\n' + self.title
+
+    @staticmethod
+    def copy_entry(entry:Entry)->Entry:
+        json_entry = {'id':entry.id, 
+                        'title':entry.title, 
+                        'intro':entry.intro,
+                        'author':{
+                            'id':entry.auth_id,
+                            'name':entry.auth_name}
+        }
+        return Entry(json_entry, entry.comments)
     
-    def __sub__(self, other)->CommentTree: # - вычитание (x - y)
-        """Возвращает CommentTree новых комментариев"""
-        set_self = set(self.comments.get_all_comments_as_dict())
-        set_other = set(other.comments.get_all_comments_as_dict())
-        difference = set_other - set_self
-        return CommentTree(list(difference), self.id)
+    def __sub__(self, other): # - вычитание (x - y)
+        """Возвращает Entry c только новыми комментариями."""
+        self_set_comments = set([comment['id'] for comment in self.comments.get_all_comments_as_dict()]) # Получаем множество комментариев в виде списка id комментариев, используем свойство их уникальности
+        other_set_comments = set([comment['id'] for comment in other.comments.get_all_comments_as_dict()]) 
+        difference = list(set_other - set_self) # Множество разности приводится к списку и затем подключаем комментарии по этим id
+        diff_entry = Entry.copy_entry(other)
+        diff_entry.set_comments(other.comments.get_comments_by_id(difference)) 
+        return diff_entry
     
     def set_updates(self, new)->CommentTree:
         """Устанавливает обновленные комментарии в записи. Возвращает новые комментарии, очищенные от комментариев автора.
             new - обвновленная версия записи."""
         if self.id == new.id:
             self.set_comments(new.comments)
-            return self.__sub__(new).get_comments_without_author(self.auth_name)
+            return self.__sub__(new).comments.get_comments_without_author(self.auth_name)
     

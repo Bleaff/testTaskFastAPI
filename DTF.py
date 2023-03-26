@@ -252,6 +252,7 @@ class DTF:
 		return res
 	
 	async def get_full_entry(self, entry_id):
+		"""Метод получения информации о записи и возврат сформированной записи с переданным id."""
 		try:
 			entry_json = await self.execute_response(f"/entry/{entry_id}")
 			comments = await self.execute_response(f"/entry/{entry_id}/comments")
@@ -277,15 +278,35 @@ class DTF:
 
 
 	def add_to_follow(self, entr: Entry)->None:
+
 		for entry in self.entries:
 			if entr.id == entry.id:
 				return 
 		self.entries.append(entr) 
 
-	async def update_followed_entries(self)->None:
+	async def update_followed_entries(self)->list:
+		"""Обновление записей, находящихся в списке на обновлнение (self.entries).
+			Метод возвращает список Entry с исключительно новыми комментариями (не полный набор комментариев)"""
+		new_comments_pool = []
 		for old_entry in self.entries:
 			new_entry = await self.get_full_entry(old_entry.id)
-			difference :CommentTree = old_entry.set_updates(new_entry) # получаем список комментариев, 
+			new_comments_pool.append(old_entry.set_updates(new_entry)) # получаем список новых комментариев
+		return new_comments_pool
+	
+	async def get_n_part_from_new_pool(self, n:int, new_pool : list)->CommentTree:
+		"""Отбор n% комментариев из числа новых комментоариев"""
+		#FIXME method!!!! Может быть узким горлышком
+		choosen_comments = []
+		for comment_tree in new_pool:
+			choosen_comments.append(comment_tree.get_n_percent(30))
+		return choosen_comments
+	
+	async def send_to_model(to_send:list)->list:
+		"""Метод принимает на вход список объектов CommentTree с новыми значениями комментариев
+			Возвращаемое значение для каждого CommentTree:
+				[username: post, username:comment, username:comment ]"""
+		to_send_list = []
+		
 
 
 

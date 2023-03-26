@@ -127,10 +127,11 @@ class CommentTree:
 			curent_comment = self.get_comment_by_id(cur_comment)
 			return self.get_comment_by_id(curent_comment.get_reply())
 	
-	def get_n_percent(self, n=40)->list:
+	def get_n_percent(self, n=40):
 		"""Возвращает список n% от всех имеющихся в CommentTree комментариев"""
-		size_of_n = ceil(len(self.all_comments) * n / 100)
-		return choices(self.all_comments, k=size_of_n)
+		size_of_n = ceil(len(self) * n / 100)
+		choosen =  choices(self.all_comments, k=size_of_n)
+		return CommentTree(choosen, self.entry_id)
 	
 	def get_comments_without_author(self, author_name):
 		comments_without_author = []
@@ -138,3 +139,6 @@ class CommentTree:
 			if author_name != comment.auth_name:
 				comments_by_author.append(comment)
 		return CommentTree(comments_without_author, self.entry_id)
+	
+	def __len__(self):
+		return len(self.all_comments)
