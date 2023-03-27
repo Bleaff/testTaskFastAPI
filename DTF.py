@@ -25,6 +25,7 @@ class DTF:
 		self._header = {'X-Device-Token': token}
 		self.semaphore = asyncio.Semaphore(3)
 		self.entries = []
+		self.replies = []
 
 	async def execute_response(self, query, repeat=False, query_path = ""):
 		"""С использованием семафора ограничиваем время выполнения последовательных задач до минимального времени 0.33 сек на запрос"""
@@ -267,7 +268,6 @@ class DTF:
 			else:
 				print("Nothing to update")
 ########################################################################### ДЛЯ ВЛАДА
-# проверка работоспособности отделения новых и старых комментов 
 	async def get_answer_from_model(self, comemnt_list):
 		#Simulating model work
 		await asyncio.sleep(2)

@@ -1,8 +1,10 @@
+##!/bin/bash
 import asyncio
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from DTF import DTF
 import asyncio
+import uvicorn
 
 serv = FastAPI()
 
@@ -123,3 +125,6 @@ async def get_entries():
 @serv.post("/add_entry_to_follow")
 async def set_follow_entry(entry:int):
     return await serv.dtf.follow_entry(entry)
+
+if __name__ == "__main__":
+    uvicorn.run("main:serv", port=37000, reload=True)
