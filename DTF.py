@@ -284,7 +284,7 @@ class DTF:
 		for_model = await self.send_to_model(entry_to_comtree) #Формируем данные для отправки в модель
 		print('For model', for_model)
 		data =  json.dumps(for_model)
-		response = await self.post_to_model(data, "http://127.0.0.1:14568/generate_comment") #Получили ответ от модели, далее отвечаем на комменты
+		response = await self.post_to_model(data, "http://127.0.0.1:8000/generate_comment") #Получили ответ от модели, далее отвечаем на комменты
 		if response is None:
 			_error("Something went wrong!")
 			return
@@ -308,8 +308,8 @@ class DTF:
 				_info('    Nothing to update.')
 
 	async def post_to_model(self, data, model_url):
-		async with aiohttp.ClientSession() as session: 
-			async with session.post(model_url, data=data, ssl=False) as response:
+		async with aiohttp.ClientSession(headers=self._header) as session: 
+			async with session.post(data=data, url=model_url) as response:
 				if response.status == requests.codes.ok: 
 					data = await response.json()
 					return data
