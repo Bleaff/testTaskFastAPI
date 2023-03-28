@@ -34,7 +34,7 @@ class DTF:
 			response = await self.get_query(query_path + query, repeat)
 			if time.time() - start < 0.33:
 				await asyncio.sleep(0.33 - time.time() + start)
-			_info(f'[{start}]Time of request is {time.time() - start}')
+			# _info(f'[{start}]Time of request is {time.time() - start}')
 			return response
 
 	async def get_query(self, query, repeat=False):
@@ -82,18 +82,21 @@ class DTF:
 		except Exception as e:
 			_error(e)
 
-	async def get_new_comments(self):
-		"""Получение новых комментариев к записям пользователя с токеном token"""
+	async def get_replies(self):
+		"""Получение новых ответов на свои комментарии.
+			Возвращаемое значение: [Entry1, Entry2, ...], где у EntryN в параметре marked_comments лежат ответы на сообщение пользователя."""
 		try:
-			new_comments_dict = dict()
+			new_comments_dict = []
 			count = await self.get_updates_count()
 			print("Count of new event:",count)
+			if not count:
+				return [] 
 			updates_list = await self.get_updates()
-			entry_to_comment = self.parse_update(updates_list, 'comment', count)
-			for entry in entry_to_comment:
-				all_comments_from_entry = await self.get_comments_by_post_id(entry)
-				comment_tree = all_comments_from_entry.get_comments_by_id(entry_to_comment[entry]) # получаем комментарии с нужными id из всех комментариев записи в виде CommentTree  
-				new_comments_dict[entry] = comment_tree.get_all_comments_as_dict()
+			entry_to_comment = self.parse_update(updates_list, 'reply', count)
+			for entry_id in entry_to_comment:
+				entry = await self.get_full_entry(int(entry_id))
+				entry.marked_comments = entry.comments.get_comments_by_id(entry_to_comment[entry_id]) # получаем комментарии с нужными id из всех комментариев записи в виде CommentTree  
+				new_comments_dict.append(entry)
 			return new_comments_dict
 		except Exception as e:
 			_error(e)
@@ -161,7 +164,7 @@ class DTF:
 			processed_comments = await comment_tree.make_comment_tree_v2(comment_id)
 			processed_comments[0] = entry_text
 			full = time.time() - start
-			_info(f"Make Comment Tree method time:{full}")
+			# _info(f"Make Comment Tree method time:{full}")
 			return processed_comments
 
 		except Exception as e:
@@ -212,7 +215,7 @@ class DTF:
 			response = await self.send_post_response(template)
 			if time.time() - start < 20:
 				await asyncio.sleep(20 - time.time() + start)
-			_info(f'[{start}]Time of request is {time.time() - start}')
+			# _info(f'[{start}]Time of request is {time.time() - start}')
 			return response
 		
 	
@@ -249,29 +252,50 @@ class DTF:
 		except Exception as e:
 			_error(e)
 
+	async def auto_reply_to_comment(self, updates):
+		"""Метод, для выполнения действий по автоматическому ответу на комментарии к посту."""
+		choosen = await self.get_n_part_from_new_pool(50, updates)
+		await self.configure_and_send(choosen)
+	
+	async def auto_reply_to_replies(self):
+		try:
+			new_replies = await self.get_replies()
+			if len(new_replies) == 0:
+				return
+			choosen = [(entry, entry.marked_comments) for entry in new_replies]
+			await self.configure_and_send(choosen)
+		except Exception as e:
+			_error(e)
+
+	async def configure_and_send(self, entry_to_comtree):
+		"""Метод собирает в один контейнер, в необходимом формате данные, отпарвляет их и принимает обратно.
+			Также здесь происходит ответ на полученные ответы."""
+		for_model = await self.send_to_model(entry_to_comtree) #Формируем данные для отправки в модель
+		print('For model', for_model)
+		response = await self.simulate_model(for_model) #Получили ответ от модели, далее отвечаем на комменты
+		print('Got back', response)
+		for entry in response: #Ответили на полученные комменты
+			for answer in entry['answers']:
+				await self.reply_to_comment(entry['entry_id'], answer['reply_to'],	answer['text_reply'])
+
 	async def request_periodic_time(self):
 		"""Метод с заданной периодичностью посылает запросы на osnovaAPI, для обновления данных об отслеживаемых записях. 
 			В данном методе запускается весь цикл от получения обновлений, до отправки ответа выбранным комментам."""
 		while True:
 			wait_for = randint(10, 20) # Берем рандомное число секунд, через какое время начнут присылаться ответы на комментарии
 			await asyncio.sleep(wait_for)
+			_info(f'Wait for:{wait_for}')
 			updates = await self.update_followed_entries()
-			if updates and  len(updates) :
-				choosen = await self.get_n_part_from_new_pool(50, updates)
-				for_model = await self.send_to_model(choosen) #Формируем данные для отправки в модель
-				print('For model', for_model)
-				response = await self.simulate_model(for_model) #Получили ответ от модели, далее отвечаем на комменты
-				print('Got back', response)
-				for entry in response: #Ответили на полученные комменты
-					for answer in entry['answers']:
-						await self.reply_to_comment(entry['entry_id'], answer['reply_to'],	answer['text_reply']) 
+			await self.auto_reply_to_replies()
+			if updates and  len(updates):
+				await self.auto_reply_to_comment(updates)
 			else:
-				print("Nothing to update")
+				_info("Nothing to update")
 ########################################################################### ДЛЯ ВЛАДА
 	async def get_answer_from_model(self, comemnt_list):
 		#Simulating model work
 		await asyncio.sleep(2)
-		return "answer_from_model"
+		return "Deep thought..."
 
 	async def simulate_model(self, data_for_model):
 		response_from_model = []
@@ -314,7 +338,6 @@ class DTF:
 		except Exception as e:
 			_error(e)
 
-
 	def add_to_follow(self, entr: Entry)->None:
 		for entry in self.entries:
 			if entr.id == entry.id:
@@ -333,7 +356,8 @@ class DTF:
 		return new_comments_pool
 	
 	async def get_n_part_from_new_pool(self, n:int, new_pool : list)->list:
-		"""Отбор n% комментариев из числа новых комментариев"""
+		"""Отбор n% комментариев из числа новых комментариев.
+			Метод возвращает список пар (Entry, NewCommentTree), где NewCommentTree с исключительно новыми комментариями (не полный набор комментариев)"""
 		#FIXME удобен для запуска в отдельный поток
 		choosen_comments = []
 

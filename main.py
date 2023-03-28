@@ -5,7 +5,8 @@ from fastapi.responses import HTMLResponse
 from DTF import DTF
 import asyncio
 import uvicorn
-
+from signalization import _info
+from Comment import CommentTree
 serv = FastAPI()
 
 
@@ -15,6 +16,7 @@ async def shedule_task_loop():
     loop = asyncio.get_event_loop()
     loop.create_task(serv.dtf.get_all_my_entries())
     loop.create_task(serv.dtf.request_periodic_time())
+    _info('    Startup complete!')
 
 
 @serv.get('/')
@@ -84,19 +86,25 @@ async def get_comments_by_post_id(id:int):
     return comment_tree.get_all_comments_as_dict()
 
 
-@serv.get('/get_new_comments')
-async def get_new_comments():
-    """
-        Метод получения новых комментариев со всех своих постов.
-    """
-    return await serv.dtf.get_new_comments()
+# @serv.get('/get_new_comments')
+# async def get_new_comments():
+#     """
+#         Метод получения новых комментариев со всех своих постов.
+#     """
+#     return await serv.dtf.get_new_comments()
 
 @serv.get('/get_reply_to_my_comments')
 async def get_reply():
     """
         Метод получения всех ответов на свои комментарии.
     """
-    return await serv.dtf.get_answers_on_my_comments()
+    result = []
+    entries = await serv.dtf.get_replies()
+    for entry in entries:
+        temp = {'entry_id':entry.id, 'new_replies':entry.marked_comments.get_all_comments_as_dict()}
+        result.append(temp)
+    
+    return result
 
 @serv.get('/get_comment_tree')
 async def get_tree(comment_id):

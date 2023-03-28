@@ -1,6 +1,6 @@
 from Comment import Comment, CommentTree
 class Entry:
-    def __init__(self, json_entry, comments: CommentTree = None):
+    def __init__(self, json_entry, comments: CommentTree = None, marked:CommentTree = None):
         self.id = json_entry['id']
         self.title = json_entry['title']
         self.intro = json_entry['intro']
@@ -8,7 +8,7 @@ class Entry:
         self.auth_id = json_entry["author"]["id"]
         self.auth_name = json_entry["author"]["name"]
         self.comments_count = len(self.comments) if comments is not None else 0
-        self.my_comments = comments
+        self.marked_comments = marked
     
     def get_entry_as_dict(self)->dict:
         result = {

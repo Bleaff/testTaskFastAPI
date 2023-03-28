@@ -84,6 +84,7 @@ class CommentTree:
 		return None
 
 	def get_comments_by_id(self, find_id:list):
+		"""Return value -> CommentTree"""
 		result = []
 		for comment in self.all_comments:
 			if comment.id in find_id:
