@@ -1,5 +1,6 @@
 import requests
 import aiohttp
+import json
 from signalization import _error, _info
 from Comment import Comment, CommentTree
 import asyncio
@@ -263,7 +264,7 @@ class DTF:
 			list_of_inter = list(entry_reply_set & com_tree_id_set) # Список комментариев, на которые уже есть ответы
 			for id_inter in list_of_inter:
 				com_tree.remove(com_tree.get_comment_by_id(id_inter))
-		_info(f'From reply to comment:\n{updates[1][1].get_all_comments_as_dict()}')
+		_info(f'From reply to comment:\n{updates[0][1].get_all_comments_as_dict()}')
 		choosen = await self.get_n_part_from_new_pool(self.answers_rate, updates)
 		await self.configure_and_send(choosen)
 	
@@ -282,7 +283,11 @@ class DTF:
 			Также здесь происходит ответ на полученные ответы."""
 		for_model = await self.send_to_model(entry_to_comtree) #Формируем данные для отправки в модель
 		print('For model', for_model)
-		response = await self.post_to_model(data, model_url) #Получили ответ от модели, далее отвечаем на комменты
+		data =  json.dumps(for_model)
+		response = await self.post_to_model(data, "http://127.0.0.1:14568/generate_comment") #Получили ответ от модели, далее отвечаем на комменты
+		if response is None:
+			_error("Something went wrong!")
+			return
 		print('Got back', response)
 		for entry in response: #Ответили на полученные комменты
 			for answer in entry['answers']:
@@ -388,9 +393,10 @@ class DTF:
 				if len(tree):
 					tree[0] = entry.auth_name
 					tree.insert(1, str(entry))
-				entry_dict['CommentTrees'].append({comment.id: tree})
+				entry_dict['CommentTrees'].append({'comment_id': comment.id, 'CommentTree': tree})
 			to_send_list.append(entry_dict)
-		return to_send_list
+		
+		return {'entries':to_send_list}
 
 		
 

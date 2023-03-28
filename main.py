@@ -130,7 +130,7 @@ async def get_entries():
     """Метод получения записей, отслеживаемые ботом """
     return serv.dtf.get_followed_entries()
 
-@serv.post("/add_entry_to_follow")
+@serv.post("/add_entry_to_follow/{entry}")
 async def set_follow_entry(entry:int):
     return await serv.dtf.follow_entry(entry)
 

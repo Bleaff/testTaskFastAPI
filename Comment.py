@@ -147,8 +147,8 @@ class CommentTree:
 		comments_with_author = []
 		for comment in self.all_comments:
 			if author_name == comment.author_name:
-				comments_without_author.append(comment)
-		return CommentTree(comments_without_author, self.entry_id)
+				comments_with_author.append(comment)
+		return CommentTree(comments_with_author, self.entry_id)
 	
 	def get_all_comments_reply_as_set(self):
 		return set([comment.reply_to for comment in self.all_comments])
