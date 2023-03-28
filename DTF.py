@@ -25,7 +25,8 @@ class DTF:
 		self._header = {'X-Device-Token': token}
 		self.semaphore = asyncio.Semaphore(3)
 		self.entries = []
-		self.replies = []
+		self.my_comments = []
+		self.answers_rate = 50
 
 	async def execute_response(self, query, repeat=False, query_path = ""):
 		"""С использованием семафора ограничиваем время выполнения последовательных задач до минимального времени 0.33 сек на запрос"""
@@ -88,7 +89,7 @@ class DTF:
 		try:
 			new_comments_dict = []
 			count = await self.get_updates_count()
-			print("Count of new event:",count)
+			_info(f"    Count of new replies:{count}")
 			if not count:
 				return [] 
 			updates_list = await self.get_updates()
@@ -253,8 +254,10 @@ class DTF:
 			_error(e)
 
 	async def auto_reply_to_comment(self, updates):
-		"""Метод, для выполнения действий по автоматическому ответу на комментарии к посту."""
-		choosen = await self.get_n_part_from_new_pool(50, updates)
+		"""Метод для выполнения действий по автоматическому ответу на комментарии к посту."""
+		choosen = await self.get_n_part_from_new_pool(self.answers_rate, updates)
+		# Также необходимо отфильтровать комментарии, на которые бот мог ответить во время проверки ответов на свои комменты (Берутся из разныъ источников => может дублироваться ответ)
+
 		await self.configure_and_send(choosen)
 	
 	async def auto_reply_to_replies(self):
@@ -282,30 +285,30 @@ class DTF:
 		"""Метод с заданной периодичностью посылает запросы на osnovaAPI, для обновления данных об отслеживаемых записях. 
 			В данном методе запускается весь цикл от получения обновлений, до отправки ответа выбранным комментам."""
 		while True:
-			wait_for = randint(10, 20) # Берем рандомное число секунд, через какое время начнут присылаться ответы на комментарии
+			wait_for = randint(5, 10) # Берем рандомное число секунд, через какое время начнут присылаться ответы на комментарии
 			await asyncio.sleep(wait_for)
-			_info(f'Wait for:{wait_for}')
+			_info(f'    Wait for:{wait_for}')
 			updates = await self.update_followed_entries()
 			await self.auto_reply_to_replies()
 			if updates and  len(updates):
 				await self.auto_reply_to_comment(updates)
 			else:
-				_info("Nothing to update")
-########################################################################### ДЛЯ ВЛАДА
-	async def get_answer_from_model(self, comemnt_list):
-		#Simulating model work
-		await asyncio.sleep(2)
-		return "Deep thought..."
+				_info('    Nothing to update.')
+# ########################################################################### ДЛЯ ВЛАДА
+# 	async def get_answer_from_model(self, comemnt_list):
+# 		#Simulating model work
+# 		await asyncio.sleep(2)
+# 		return "Deep thought..."
 
-	async def simulate_model(self, data_for_model):
-		response_from_model = []
-		for entry in data_for_model:
-			ans_dict = {"entry_id":entry['entry_id'], 'answers':[]}
-			for commentTree in entry['CommentTrees']:
-				ans_dict['answers'].append({'reply_to':commentTree[0], 'text_reply':await self.get_answer_from_model(commentTree)}) #commentTree[0] -> id выбранного для ответа комментария
-			response_from_model.append(ans_dict)
-		return response_from_model
-####################################################################################
+# 	async def simulate_model(self, data_for_model):
+# 		response_from_model = []
+# 		for entry in data_for_model:
+# 			ans_dict = {"entry_id":entry['entry_id'], 'answers':[]}
+# 			for commentTree in entry['CommentTrees']:
+# 				ans_dict['answers'].append({'reply_to':commentTree[0], 'text_reply':await self.get_answer_from_model(commentTree)}) #commentTree[0] -> id выбранного для ответа комментария
+# 			response_from_model.append(ans_dict)
+# 		return response_from_model
+# ####################################################################################
 	def get_followed_entries(self)->list:
 		"""
 			Метод получения записей, отслеживаемые ботом
@@ -380,8 +383,9 @@ class DTF:
 			for comment in all_com: #Строим для каждого комментария из выбранных свою цепочку 
 				tree = await entry.comments.make_comment_tree_v2(comment.id)
 				if len(tree):
-					tree[0] = (entry.auth_name, str(entry))
-				entry_dict['CommentTrees'].append((comment.id, tree))
+					tree[0] = entry.auth_name
+					tree.insert(1, str(entry))
+				entry_dict['CommentTrees'].append({comment.id: tree})
 			to_send_list.append(entry_dict)
 		return to_send_list
 

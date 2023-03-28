@@ -66,10 +66,11 @@ class CommentTree:
 		"""Алгоритм построения остортированного списка комментариев вверх от переданного comment_id.
 		Возвращаемое значение: list = [пост_id, 'коммент1', 'коммент2'...]"""
 		last_comment = self.get_comment_by_id(comment_id)
-		result_list = [(last_comment.author_name, last_comment.text)]
+		result_list = [last_comment.text, last_comment.author_name] # Обратный порядок, т.к. далее разворачиваем список
 		next_comment = self.get_next_comment(comment_id)
 		while (next_comment):
-			result_list.append((next_comment.author_name, next_comment.text))
+			result_list.append(next_comment.text)
+			result_list.append(next_comment.author_name)
 			next_comment = self.get_next_comment(next_comment)
 		result_list.append(self.entry_id)
 		result_list.reverse()
