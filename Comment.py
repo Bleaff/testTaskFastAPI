@@ -143,5 +143,18 @@ class CommentTree:
 				comments_without_author.append(comment)
 		return CommentTree(comments_without_author, self.entry_id)
 	
+	def get_comments_with_author(self, author_name):
+		comments_with_author = []
+		for comment in self.all_comments:
+			if author_name == comment.author_name:
+				comments_without_author.append(comment)
+		return CommentTree(comments_without_author, self.entry_id)
+	
+	def get_all_comments_reply_as_set(self):
+		return set([comment.reply_to for comment in self.all_comments])
+
+	def get_all_comments_id_as_set(self):
+		return set([comment.id for comment in self.all_comments])
+
 	def __len__(self):
 		return len(self.all_comments)

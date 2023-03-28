@@ -64,6 +64,7 @@ class DTF:
 			response = await self.execute_response("/user/me/entries")
 			for entry_json in response['result']:
 				entry = Entry(entry_json)
+				self.bot_name = entry.auth_name
 				comments = await self.execute_response(f"/entry/{entry_json['id']}/comments")
 				comments_list = [self._parse_comment(comment) for comment in comments['result']]
 				com_tree = CommentTree(comments_list, entry.id)
@@ -255,9 +256,15 @@ class DTF:
 
 	async def auto_reply_to_comment(self, updates):
 		"""Метод для выполнения действий по автоматическому ответу на комментарии к посту."""
-		choosen = await self.get_n_part_from_new_pool(self.answers_rate, updates)
 		# Также необходимо отфильтровать комментарии, на которые бот мог ответить во время проверки ответов на свои комменты (Берутся из разныъ источников => может дублироваться ответ)
-
+		for entry, com_tree in updates:
+			entry_reply_set = entry.comments.get_comments_with_author(self.bot_name).get_all_comments_reply_as_set()
+			com_tree_id_set = com_tree.get_all_comments_reply_as_set()
+			list_of_inter = list(entry_reply_set & com_tree_id_set) # Список комментариев, на которые уже есть ответы
+			for id_inter in list_of_inter:
+				com_tree.remove(com_tree.get_comment_by_id(id_inter))
+		_info(f'From reply to comment:\n{updates[1][1].get_all_comments_as_dict()}')
+		choosen = await self.get_n_part_from_new_pool(self.answers_rate, updates)
 		await self.configure_and_send(choosen)
 	
 	async def auto_reply_to_replies(self):
@@ -271,11 +278,11 @@ class DTF:
 			_error(e)
 
 	async def configure_and_send(self, entry_to_comtree):
-		"""Метод собирает в один контейнер, в необходимом формате данные, отпарвляет их и принимает обратно.
+		"""Метод собирает в один контейнер в необходимом формате данные, отправляет их и принимает обратно.
 			Также здесь происходит ответ на полученные ответы."""
 		for_model = await self.send_to_model(entry_to_comtree) #Формируем данные для отправки в модель
 		print('For model', for_model)
-		response = await self.simulate_model(for_model) #Получили ответ от модели, далее отвечаем на комменты
+		response = await self.post_to_model(data, model_url) #Получили ответ от модели, далее отвечаем на комменты
 		print('Got back', response)
 		for entry in response: #Ответили на полученные комменты
 			for answer in entry['answers']:
@@ -294,21 +301,17 @@ class DTF:
 				await self.auto_reply_to_comment(updates)
 			else:
 				_info('    Nothing to update.')
-# ########################################################################### ДЛЯ ВЛАДА
-# 	async def get_answer_from_model(self, comemnt_list):
-# 		#Simulating model work
-# 		await asyncio.sleep(2)
-# 		return "Deep thought..."
 
-# 	async def simulate_model(self, data_for_model):
-# 		response_from_model = []
-# 		for entry in data_for_model:
-# 			ans_dict = {"entry_id":entry['entry_id'], 'answers':[]}
-# 			for commentTree in entry['CommentTrees']:
-# 				ans_dict['answers'].append({'reply_to':commentTree[0], 'text_reply':await self.get_answer_from_model(commentTree)}) #commentTree[0] -> id выбранного для ответа комментария
-# 			response_from_model.append(ans_dict)
-# 		return response_from_model
-# ####################################################################################
+	async def post_to_model(self, data, model_url):
+		async with aiohttp.ClientSession() as session: 
+			async with session.post(model_url, data=data, ssl=False) as response:
+				if response.status == requests.codes.ok: 
+					data = await response.json()
+					return data
+				else:
+					_error(f"Status code is {response.status}")
+					return None
+
 	def get_followed_entries(self)->list:
 		"""
 			Метод получения записей, отслеживаемые ботом
