@@ -102,6 +102,7 @@ async def get_reply():
     entries = await serv.dtf.get_replies()
     for entry in entries:
         temp = {'entry_id':entry.id, 'new_replies':entry.marked_comments.get_all_comments_as_dict()}
+        temp =
         result.append(temp)
     
     return result
