@@ -7,6 +7,8 @@ import asyncio
 import time
 from random import randint
 from Entry import *
+from api_models import *
+from pydantic import parse_obj_as
 
 class DTF:
 	"""
@@ -264,7 +266,6 @@ class DTF:
 			list_of_inter = list(entry_reply_set & com_tree_id_set) # Список комментариев, на которые уже есть ответы
 			for id_inter in list_of_inter:
 				com_tree.remove(com_tree.get_comment_by_id(id_inter))
-		_info(f'From reply to comment:\n{updates[0][1].get_all_comments_as_dict()}')
 		choosen = await self.get_n_part_from_new_pool(self.answers_rate, updates)
 		await self.configure_and_send(choosen)
 	
@@ -281,17 +282,15 @@ class DTF:
 	async def configure_and_send(self, entry_to_comtree):
 		"""Метод собирает в один контейнер в необходимом формате данные, отправляет их и принимает обратно.
 			Также здесь происходит ответ на полученные ответы."""
-		for_model = await self.send_to_model(entry_to_comtree) #Формируем данные для отправки в модель
-		print('For model', for_model)
-		data =  json.dumps(for_model)
-		response = await self.post_to_model(data, "http://127.0.0.1:8000/generate_comment") #Получили ответ от модели, далее отвечаем на комменты
+		data = await self.send_to_model(entry_to_comtree) #Формируем данные для отправки в модель
+		# data = json.dumps(for_model)
+		print("For model:", data)
+		response = await self.post_to_model(data, "http://127.0.0.1:14568/generate_comment") #Получили ответ от модели, далее отвечаем на комменты
 		if response is None:
 			_error("Something went wrong!")
-			return
-		print('Got back', response)
-		for entry in response: #Ответили на полученные комменты
-			for answer in entry['answers']:
-				await self.reply_to_comment(entry['entry_id'], answer['reply_to'],	answer['text_reply'])
+		for entry in response['entries']: #Ответили на полученные комменты
+			for answer in entry['CommentTrees']:
+				await self.reply_to_comment(entry["entry_id"], answer['comment_id'], answer['Resp'])
 
 	async def request_periodic_time(self):
 		"""Метод с заданной периодичностью посылает запросы на osnovaAPI, для обновления данных об отслеживаемых записях. 
@@ -308,13 +307,13 @@ class DTF:
 				_info('    Nothing to update.')
 
 	async def post_to_model(self, data, model_url):
-		async with aiohttp.ClientSession(headers=self._header) as session: 
-			async with session.post(data=data, url=model_url) as response:
+		async with aiohttp.ClientSession() as session: 
+			async with session.post(json=data, url=model_url) as response:
 				if response.status == requests.codes.ok: 
 					data = await response.json()
 					return data
 				else:
-					_error(f"Status code is {response.status}")
+					_error(await response.text())
 					return None
 
 	def get_followed_entries(self)->list:
@@ -386,17 +385,18 @@ class DTF:
 				[[username: post, username:comment, username:comment, ... ], ..., []]"""
 		to_send_list = []
 		for entry, com_tree in to_send:
-			entry_dict = {'entry_id': entry.id, 'CommentTrees': []}
+			entry_dict = {"entry_id": str(entry.id), "CommentTrees": []}
 			all_com = com_tree.get_all_comments()
 			for comment in all_com: #Строим для каждого комментария из выбранных свою цепочку 
 				tree = await entry.comments.make_comment_tree_v2(comment.id)
 				if len(tree):
 					tree[0] = entry.auth_name
 					tree.insert(1, str(entry))
-				entry_dict['CommentTrees'].append({'comment_id': comment.id, 'CommentTree': tree})
+				entry_dict["CommentTrees"].append({"comment_id": str(comment.id), "CommentTree": tree})
 			to_send_list.append(entry_dict)
 		
-		return {'entries':to_send_list}
+		return {"entries":to_send_list}
+		
 
 		
 

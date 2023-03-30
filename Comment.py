@@ -61,7 +61,7 @@ class CommentTree:
 		except Exception as e:
 			_error(e)
 	
-	async def make_comment_tree_v2(self, comment_id) -> list:
+	async def make_comment_tree_v2(self, comment_id) -> list[str]:
 	#FIXME ????
 		"""Алгоритм построения остортированного списка комментариев вверх от переданного comment_id.
 		Возвращаемое значение: list = [пост_id, 'коммент1', 'коммент2'...]"""
