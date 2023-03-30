@@ -296,11 +296,11 @@ class DTF:
 		"""Метод с заданной периодичностью посылает запросы на osnovaAPI, для обновления данных об отслеживаемых записях. 
 			В данном методе запускается весь цикл от получения обновлений, до отправки ответа выбранным комментам."""
 		while True:
-			wait_for = randint(5, 10) # Берем рандомное число секунд, через какое время начнут присылаться ответы на комментарии
+			wait_for = randint(20, 30) # Берем рандомное число секунд, через какое время начнут присылаться ответы на комментарии
+			await self.auto_reply_to_replies()			
 			await asyncio.sleep(wait_for)
 			_info(f'    Wait for:{wait_for}')
 			updates = await self.update_followed_entries()
-			await self.auto_reply_to_replies()
 			if updates and  len(updates):
 				await self.auto_reply_to_comment(updates)
 			else:
