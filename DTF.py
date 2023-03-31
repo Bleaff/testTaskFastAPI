@@ -257,34 +257,43 @@ class DTF:
 		except Exception as e:
 			_error(e)
 
+	def produce_singularity(self, entry_comment, entry_reply):
+		# Метод для удаления дубликатов из отправляющего пула. В методе объединяются комментарии для ответа модели в один пул.
+		for i, pair in enumerate(entry_comment):
+			for entry in entry_reply:
+				if pair[0].id == entry.id:
+					entry_comment[i][0].marked_comments = entry.marked_comments
+		#marked_comment - комментарии, которые являются ответом на наши комментарии
+		for i, pair in enumerate(entry_comment):
+			if not pair[0].marked_comments:
+				continue
+			print(f'Marked:{pair[0].marked_comments.get_all_comments_id_as_set()}', len(pair[0].marked_comments.get_all_comments_id_as_set()))
+			print(f'Comments:{pair[1].get_all_comments_id_as_set()}', len(pair[1].get_all_comments_id_as_set()))
+			common_set = pair[0].marked_comments.get_all_comments_id_as_set().union(pair[1].get_all_comments_id_as_set())
+			print(common_set)
+			entry_comment[i] = (pair[0], pair[0].comments.get_comments_by_id(list(common_set)))
+		
+
 	async def auto_reply_to_comment(self, updates):
 		"""Метод для выполнения действий по автоматическому ответу на комментарии к посту."""
-		# Также необходимо отфильтровать комментарии, на которые бот мог ответить во время проверки ответов на свои комменты (Берутся из разныъ источников => может дублироваться ответ)
-		for entry, com_tree in updates:
-			entry_reply_set = entry.comments.get_comments_with_author(self.bot_name).get_all_comments_reply_as_set()
-			com_tree_id_set = com_tree.get_all_comments_reply_as_set()
-			list_of_inter = list(entry_reply_set & com_tree_id_set) # Список комментариев, на которые уже есть ответы
-			for id_inter in list_of_inter:
-				com_tree.remove(com_tree.get_comment_by_id(id_inter))
 		choosen = await self.get_n_part_from_new_pool(self.answers_rate, updates)
-		await self.configure_and_send(choosen)
+		replies = await self.auto_reply_to_replies()
+		self.produce_singularity(choosen, replies)
+		await self.configure_and_send(choosen, "FROM COMMENT")
 	
 	async def auto_reply_to_replies(self):
 		try:
 			new_replies = await self.get_replies()
 			if len(new_replies) == 0:
-				return
-			choosen = [(entry, entry.marked_comments) for entry in new_replies]
-			await self.configure_and_send(choosen)
+				return []
+			return new_replies
 		except Exception as e:
 			_error(e)
 
-	async def configure_and_send(self, entry_to_comtree):
+	async def configure_and_send(self, entry_to_comtree, from_f):
 		"""Метод собирает в один контейнер в необходимом формате данные, отправляет их и принимает обратно.
 			Также здесь происходит ответ на полученные ответы."""
 		data = await self.send_to_model(entry_to_comtree) #Формируем данные для отправки в модель
-		# data = json.dumps(for_model)
-		print("For model:", data)
 		response = await self.post_to_model(data, "http://127.0.0.1:14568/generate_comment") #Получили ответ от модели, далее отвечаем на комменты
 		if response is None:
 			_error("Something went wrong!")
@@ -296,8 +305,7 @@ class DTF:
 		"""Метод с заданной периодичностью посылает запросы на osnovaAPI, для обновления данных об отслеживаемых записях. 
 			В данном методе запускается весь цикл от получения обновлений, до отправки ответа выбранным комментам."""
 		while True:
-			wait_for = randint(20, 30) # Берем рандомное число секунд, через какое время начнут присылаться ответы на комментарии
-			await self.auto_reply_to_replies()			
+			wait_for = randint(10, 15) # Берем рандомное число секунд, через какое время начнут присылаться ответы на комментарии
 			await asyncio.sleep(wait_for)
 			_info(f'    Wait for:{wait_for}')
 			updates = await self.update_followed_entries()
@@ -396,14 +404,3 @@ class DTF:
 			to_send_list.append(entry_dict)
 		
 		return {"entries":to_send_list}
-		
-
-		
-
-	# async def _ans_to_all(self):
-	# 	entry = await self.get_full_entry(1296731)
-	# 	all_comments = entry.comments.get_all_comments_as_dict()
-	# 	for com in all_comments:
-	# 		await self.reply_to_comment(entry.id, com['id'], ".")
-
-
