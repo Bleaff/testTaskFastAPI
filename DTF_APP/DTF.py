@@ -294,7 +294,7 @@ class DTF:
 		"""Метод собирает в один контейнер в необходимом формате данные, отправляет их и принимает обратно.
 			Также здесь происходит ответ на полученные ответы."""
 		data = await self.send_to_model(entry_to_comtree) #Формируем данные для отправки в модель
-		response = await self.post_to_model(data, "http://127.0.0.1:14568/generate_comment") #Получили ответ от модели, далее отвечаем на комменты
+		response = await self.post_to_model(data, "http://0.0.0.0:14568/generate_comment") #Получили ответ от модели, далее отвечаем на комменты
 		if response is None:
 			_error("Something went wrong!")
 		for entry in response['entries']: #Ответили на полученные комменты
