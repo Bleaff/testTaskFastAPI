@@ -133,7 +133,11 @@ class CommentTree:
 	def get_n_percent(self, n=40):
 		"""Возвращает список n% от всех имеющихся в CommentTree комментариев"""
 		size_of_n = ceil(len(self) * n / 100)
-		choosen =  choices(self.all_comments, k=size_of_n)
+		upgraded_list = self.get_all_comments()
+		if len(self.all_comments) < 2:
+			upgraded_list.append(None) #Чтобы единственный элемент имел шанс быть невыбранным
+		choosen =  choices(upgraded_list, k=size_of_n)
+		result = [element for element in choosen if element is not None]
 		return CommentTree(choosen, self.entry_id)
 	
 	def get_comments_without_author(self, author_name):

@@ -27,24 +27,6 @@ class Entry:
     def __str__(self)->str:
         return self.intro + ' ' + self.title
 
-    # @staticmethod
-    # def copy_entry(entry:Entry)->Entry:
-    #     json_entry = {'id':entry.id, 
-    #                     'title':entry.title, 
-    #                     'intro':entry.intro,
-    #                     'author':{
-    #                         'id':entry.auth_id,
-    #                         'name':entry.auth_name}
-    #     }
-    #     return Entry(json_entry, entry.comments)
-    
-    # def __sub__(self, other): # - вычитание (self - other) => self > other
-    #     """Возвращает CommentTree только c новыми комментариями."""
-    #     self_set_comments = set([comment['id'] for comment in self.comments.get_all_comments_as_dict()]) # Получаем множество комментариев в виде списка id комментариев, используем свойство их уникальности
-    #     other_set_comments = set([comment['id'] for comment in other.comments.get_all_comments_as_dict()]) 
-    #     difference = list(self_set_comments - other_set_comments) # Множество разности приводится к списку и затем подключаем комментарии по этим id
-    #     return self.comments.get_comments_by_id(difference)
-
     def get_differ_comments(self, other):
         """Возвращает CommentTree только c новыми комментариями."""
         self_set_comments = set([comment['id'] for comment in self.comments.get_all_comments_as_dict()]) # Получаем множество комментариев в виде списка id комментариев, используем свойство их уникальности

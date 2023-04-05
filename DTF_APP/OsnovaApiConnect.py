@@ -10,7 +10,8 @@ from Entry import *
 from api_models import *
 from pydantic import parse_obj_as
 
-class DTF:
+class OsnovaApiConn:
+	entity_id = 0
 	"""
 	Класс для соединения с сервисом OsnovaApi (Tjournal, DTF, VC).
 		Данный класс в автоматическом режиме получает набор комментариев на заданный список записей.
@@ -21,15 +22,18 @@ class DTF:
 			Просмотр всех записей, принадлежащих пользователю с токеном 'token'.
 	"""
 
-	def __init__(self, token):
+	def __init__(self, token, place = "dtf"):
 		"""Заполнение поля token, инициализация необходимых параметров."""
+		self.__class__.entity_id += 1 #id of bot entity
+		self.osnova_api_con_id = self.__class__.entity_id
 		self._token = token
-		self._url = 'https://api.dtf.ru/v1.9'
+		self._url = f'https://api.{place}.ru/v1.9'
 		self._header = {'X-Device-Token': token}
 		self.semaphore = asyncio.Semaphore(3)
 		self.entries = []
-		self.my_comments = []
-		self.answers_rate = 50
+		self.answers_rate = 30
+		self.is_active = False
+		self.active_task = None # Parameter for endless cycle task (request periodic time method)
 
 	async def execute_response(self, query, repeat=False, query_path = ""):
 		"""С использованием семафора ограничиваем время выполнения последовательных задач до минимального времени 0.33 сек на запрос"""
@@ -67,7 +71,6 @@ class DTF:
 			response = await self.execute_response("/user/me/entries")
 			for entry_json in response['result']:
 				entry = Entry(entry_json)
-				self.bot_name = entry.auth_name
 				comments = await self.execute_response(f"/entry/{entry_json['id']}/comments")
 				comments_list = [self._parse_comment(comment) for comment in comments['result']]
 				com_tree = CommentTree(comments_list, entry.id)
@@ -89,11 +92,11 @@ class DTF:
 
 	async def get_replies(self):
 		"""Получение новых ответов на свои комментарии.
-			Возвращаемое значение: [Entry1, Entry2, ...], где у EntryN в параметре marked_comments лежат ответы на сообщение пользователя."""
+			Возвращаемое значение: [(Entry1, CommentTree), (Entry2, CommentTree), ...], где у EntryN в параметре marked_comments лежат ответы на сообщение пользователя."""
 		try:
 			new_comments_dict = []
 			count = await self.get_updates_count()
-			_info(f"    Count of new replies:{count}")
+			_info(f"    B#{self.osnova_api_con_id} {self.user_name}:Count of new replies:{count}")
 			if not count:
 				return [] 
 			updates_list = await self.get_updates()
@@ -101,7 +104,8 @@ class DTF:
 			for entry_id in entry_to_comment:
 				entry = await self.get_full_entry(int(entry_id))
 				entry.marked_comments = entry.comments.get_comments_by_id(entry_to_comment[entry_id]) # получаем комментарии с нужными id из всех комментариев записи в виде CommentTree  
-				new_comments_dict.append(entry)
+				new_comments_dict.append((entry, entry.marked_comments))
+			
 			return new_comments_dict
 		except Exception as e:
 			_error(e)
@@ -222,8 +226,7 @@ class DTF:
 				await asyncio.sleep(20 - time.time() + start)
 			# _info(f'[{start}]Time of request is {time.time() - start}')
 			return response
-		
-	
+
 	async def get_updates(self):
 		response = await self.execute_response("/user/me/updates?is_read=1")
 		return response
@@ -260,25 +263,25 @@ class DTF:
 	def produce_singularity(self, entry_comment, entry_reply):
 		# Метод для удаления дубликатов из отправляющего пула. В методе объединяются комментарии для ответа модели в один пул.
 		for i, pair in enumerate(entry_comment):
-			for entry in entry_reply:
-				if pair[0].id == entry.id:
-					entry_comment[i][0].marked_comments = entry.marked_comments
+			for entry in entry_reply: # entry looks like: (entry, commentTree)
+				if pair[0].id == entry[0].id:
+					entry_comment[i][0].marked_comments = entry[0].marked_comments
 		#marked_comment - комментарии, которые являются ответом на наши комментарии
 		for i, pair in enumerate(entry_comment):
 			if not pair[0].marked_comments:
 				continue
-			print(f'Marked:{pair[0].marked_comments.get_all_comments_id_as_set()}', len(pair[0].marked_comments.get_all_comments_id_as_set()))
-			print(f'Comments:{pair[1].get_all_comments_id_as_set()}', len(pair[1].get_all_comments_id_as_set()))
+			# print(f'Marked:{pair[0].marked_comments.get_all_comments_id_as_set()}', len(pair[0].marked_comments.get_all_comments_id_as_set()))#DEBUG
+			# print(f'Comments:{pair[1].get_all_comments_id_as_set()}', len(pair[1].get_all_comments_id_as_set()))#DEBUG
 			common_set = pair[0].marked_comments.get_all_comments_id_as_set().union(pair[1].get_all_comments_id_as_set())
-			print(common_set)
 			entry_comment[i] = (pair[0], pair[0].comments.get_comments_by_id(list(common_set)))
-		
+		if not len(entry_comment) and len(entry_reply): #Если нет новых комментариев к записи, но есть ответы, мы отвечаем.
+			entry_comment = entry_reply
+		return entry_comment
 
-	async def auto_reply_to_comment(self, updates):
+	async def auto_reply_to_comment(self, updates, replies):
 		"""Метод для выполнения действий по автоматическому ответу на комментарии к посту."""
-		choosen = await self.get_n_part_from_new_pool(self.answers_rate, updates)
-		replies = await self.auto_reply_to_replies()
-		self.produce_singularity(choosen, replies)
+		choosen = self.produce_singularity(updates, replies) # Сначала сливаем все в один пул (комменты и ответы)
+		choosen = await self.get_n_part_from_new_pool(self.answers_rate, choosen) # Далее из пула выбираем рандомную часть для ответа
 		await self.configure_and_send(choosen, "FROM COMMENT")
 	
 	async def auto_reply_to_replies(self):
@@ -294,7 +297,7 @@ class DTF:
 		"""Метод собирает в один контейнер в необходимом формате данные, отправляет их и принимает обратно.
 			Также здесь происходит ответ на полученные ответы."""
 		data = await self.send_to_model(entry_to_comtree) #Формируем данные для отправки в модель
-		response = await self.post_to_model(data, "http://0.0.0.0:14568/generate_comment") #Получили ответ от модели, далее отвечаем на комменты
+		response = await self.post_to_model(data, "http://0.0.0.0:35000/generate_comment") #Получили ответ от модели, далее отвечаем на комменты
 		if response is None:
 			_error("Something went wrong!")
 		for entry in response['entries']: #Ответили на полученные комменты
@@ -305,14 +308,16 @@ class DTF:
 		"""Метод с заданной периодичностью посылает запросы на osnovaAPI, для обновления данных об отслеживаемых записях. 
 			В данном методе запускается весь цикл от получения обновлений, до отправки ответа выбранным комментам."""
 		while True:
-			wait_for = randint(10, 15) # Берем рандомное число секунд, через какое время начнут присылаться ответы на комментарии
+			wait_for = randint(20, 45) # Берем рандомное число секунд, через какое время начнут присылаться ответы на комментарии
 			await asyncio.sleep(wait_for)
-			_info(f'    Wait for:{wait_for}')
+			_info(f'    B#{self.osnova_api_con_id} {self.user_name}: Wait for:{wait_for}')
 			updates = await self.update_followed_entries()
-			if updates and  len(updates):
-				await self.auto_reply_to_comment(updates)
+			replies = await self.auto_reply_to_replies()
+			if (updates and  len(updates)) or len(replies):
+				await self.auto_reply_to_comment(updates, replies)
+			
 			else:
-				_info('    Nothing to update.')
+				_info(f'    B#{self.osnova_api_con_id} {self.user_name}: Nothing to update.')
 
 	async def post_to_model(self, data, model_url):
 		async with aiohttp.ClientSession() as session: 
@@ -386,8 +391,6 @@ class DTF:
 		return choosen_comments
 	
 	async def send_to_model(self,to_send:list)->list:
-	#FIXME method (ТЯЖЕЛЫЕ ВЫЧИСЛЕНИЯ)
-	#FIXME удобен для запуска в отдельный поток
 		"""Метод принимает на вход список пар (Entry, CommentTree) с новыми значениями комментариев
 			Возвращаемое значение для каждой пары  (Entry, CommentTree):
 				[[username: post, username:comment, username:comment, ... ], ..., []]"""
@@ -402,5 +405,36 @@ class DTF:
 					tree.insert(1, str(entry))
 				entry_dict["CommentTrees"].append({"comment_id": str(comment.id), "CommentTree": tree})
 			to_send_list.append(entry_dict)
-		
 		return {"entries":to_send_list}
+	
+	async def run_setup(self):
+		"""
+			Метод для первого запуска в обычном режиме(прослушивания записей) + выставление собственных записей в список прослушивания.
+		"""
+		response = await self.execute_response('/user/me')
+		if not response:
+			_error("An error occurred while retrieving data")
+		self.user_id = response["result"]['id']
+		self.user_name = response['result']['name']
+		await self.get_all_my_entries()
+
+	async def start_my_task(self):
+		if not self.is_active:
+			self.active_task = asyncio.create_task(self.request_periodic_time())
+			self.is_active = True
+
+	async def cancel_my_task(self):
+		if self.is_active:
+			status = self.active_task.cancel()
+			_log(f'Bot #{self.osnova_api_con_id} has canceled his task status:{status}')
+			while True:
+				await asyncio.sleep(0.3)
+				if self.active_task.cancelled():
+					_log(f'Bot #{self.osnova_api_con_id} has canceled his task status:{status}')
+					break
+			self.is_active = False
+			self.active_task = None
+	
+	async def enterance_into_foreign_entry(self, entry_id):
+		
+

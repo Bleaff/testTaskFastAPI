@@ -26,3 +26,6 @@ class GiveBackResponse(BaseModel):
     entries: Union[List[Entry_resp], None]
 
 
+class UserModel(BaseModel):
+    id: int
+    name: str

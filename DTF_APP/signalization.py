@@ -7,8 +7,14 @@ def yellow(text):
 def blue(text):
     return "\033[34m{}\033[0m".format(text)
 
-def _info(text):
-    print(f"{yellow('[LOG]')}:{blue(text)}")
+def _info(*text):
+    res = yellow('[LOG]') + ': '
+    for word in text:
+        res += blue(word) + ' '
+    print(res)
 
-def _error(text):
-    print(f"{red('[ERROR]')}: {red(text)}")
+def _error(*text):
+    res = red('[ERROR]') + ': '
+    for word in text:
+        res += red(word) + ' '
+    print(res)
