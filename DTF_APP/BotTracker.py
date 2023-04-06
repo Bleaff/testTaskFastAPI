@@ -27,3 +27,6 @@ class BotTracker:
 	async def stop_all_bots(self):
 		for bot in self.bots_pool:
 			bot.cancel_task()
+	
+	# async def add_to_foreign_pool(self, *entrie_id_or_ids):
+		

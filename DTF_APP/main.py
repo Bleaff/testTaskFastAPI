@@ -8,10 +8,15 @@ import uvicorn
 from signalization import _info
 from Comment import CommentTree
 from BotTracker import BotTracker
+from sqlalchemy import create_engine
+
+engine = create_engine("postgresql+psycopg2://postgres:5241@localhost:5432/unlim_ad")
 serv = FastAPI()
 
 t1 = '555ea53407c0b2455a6479fec5b3893ebf3fa674bffdebb5327e878696bfe263'
 t2 = "79a24dbb2334b0a52a506db13f561cc006a6c2b52c12ed5ce2850eb5dd86a583"
+
+bd = 'unlim_ad'
 
 @serv.on_event("startup")
 async def shedule_task_loop():

@@ -13,6 +13,11 @@ class EntryResponse(BaseModel):
 
 class GenerateCommentResponse(BaseModel):
     entries: List[EntryResponse]
+    pretext: Union[str, None]
+    nickname: Union[str, None]
+    temperature: Union[float, None]
+    top_p: Union[float, None]
+    model: Union[str, None]
 
 class Response(BaseModel):
     comment_id:int

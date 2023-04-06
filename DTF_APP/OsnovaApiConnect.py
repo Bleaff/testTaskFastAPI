@@ -34,6 +34,10 @@ class OsnovaApiConn:
 		self.answers_rate = 30
 		self.is_active = False
 		self.active_task = None # Parameter for endless cycle task (request periodic time method)
+		self.pretext = ''
+		self.temperature = 1
+		self.top_p = 1
+		self.model = 'gpt-3.5-turbo'
 
 	async def execute_response(self, query, repeat=False, query_path = ""):
 		"""С использованием семафора ограничиваем время выполнения последовательных задач до минимального времени 0.33 сек на запрос"""
@@ -380,6 +384,7 @@ class OsnovaApiConn:
 	
 	async def get_n_part_from_new_pool(self, n:int, new_pool : list)->list:
 		"""Отбор n% комментариев из числа новых комментариев.
+			new_pool -> [(entry,comment_tree), (entry,comment_tree), (entry,comment_tree)]
 			Метод возвращает список пар (Entry, NewCommentTree), где NewCommentTree с исключительно новыми комментариями (не полный набор комментариев)"""
 		#FIXME удобен для запуска в отдельный поток
 		choosen_comments = []
@@ -405,7 +410,13 @@ class OsnovaApiConn:
 					tree.insert(1, str(entry))
 				entry_dict["CommentTrees"].append({"comment_id": str(comment.id), "CommentTree": tree})
 			to_send_list.append(entry_dict)
-		return {"entries":to_send_list}
+		result = {"entries":to_send_list}
+		result['pretext'] = self.pretext
+		result['temperature'] = self.temperature
+		result['nickname'] = self.user_name
+		result['top_p'] = self.top_p
+		result['model'] = self.model
+		return result
 	
 	async def run_setup(self):
 		"""
@@ -435,6 +446,12 @@ class OsnovaApiConn:
 			self.is_active = False
 			self.active_task = None
 	
-	async def enterance_into_foreign_entry(self, entry_id):
-		
+	async def enterance_into_foreign_entry(self, *entry_id_or_ids):
+		# Получаем все комментарии исследуемой записи, выбираем из них часть
+		entry_list = []
+		for entry in entry_id_or_ids:
+			entry = self.get_full_entry(entry_id)
+			entry_list.append((entry, entry.comments))
+		choosen_comments = self.get_n_part_from_new_pool(self.answers_rate, entry_list)
+		self.configure_and_send(choosen_comments, "FROM SINGLE ENTRANCE")
 

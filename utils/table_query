@@ -1,0 +1,19 @@
+CREATE TABLE pretexts
+(
+    Id SERIAL PRIMARY KEY,
+    Pretext TEXT
+);
+CREATE TABLE bots
+(
+    Id SERIAL PRIMARY KEY,
+    Token CHARACTER VARYING(64),
+    Place CHARACTER VARYING(30),
+    Pretext_id INTEGER,
+    FOREIGN KEY (Pretext_id) REFERENCES pretexts (Id)
+);
+
+INSERT INTO pretexts VALUES ('"task_pretext" : "I will provide you with posts or posts and comments made by people and you will write a short reply that provides you opinion on the topic at hand. Your main goal is to create a human-like reply."');
+
+INSERT INTO bots (Token, Place, Pretext_id) VALUES 
+('79a24dbb2334b0a52a506db13f561cc006a6c2b52c12ed5ce2850eb5dd86a583', 'dtf', 1),
+('555ea53407c0b2455a6479fec5b3893ebf3fa674bffdebb5327e878696bfe263', 'dtf', 1);
