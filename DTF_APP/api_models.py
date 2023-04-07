@@ -34,3 +34,7 @@ class GiveBackResponse(BaseModel):
 class UserModel(BaseModel):
     id: int
     name: str
+
+class BotStartUp(BaseModel):
+    id : int
+
