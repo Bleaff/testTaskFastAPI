@@ -28,5 +28,16 @@ class BotTracker:
 		for bot in self.bots_pool:
 			bot.cancel_task()
 	
-	# async def add_to_foreign_pool(self, *entrie_id_or_ids):
+	def get_active_bot(self):
+		active_list = []
+		for bot in self.bots_pool:
+			if bot.is_active:
+				active_list.append(f'Bot ID:{bot.osnova_api_con_id}, BOT\'S Name:{bot.user_name}')
+		return active_list
+	
+	def get_bot_by_id(self, bot_id):
+		for bot in self.bots_pool:
+			if bot_id == bot.osnova_api_con_id:
+				return bot
+		return None
 		

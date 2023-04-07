@@ -3,12 +3,18 @@ class Entry:
     def __init__(self, json_entry, comments: CommentTree = None, marked:CommentTree = None):
         self.id = json_entry['id']
         self.title = json_entry['title']
-        self.intro = json_entry['intro']
+        self.intro = ''
         self.comments = comments
         self.auth_id = json_entry["author"]["id"]
         self.auth_name = json_entry["author"]["name"]
         self.comments_count = len(self.comments) if comments is not None else 0
         self.marked_comments = marked
+        for block in json_entry['blocks']:
+            if block['type'] == 'text' or block['type'] == 'incut' or block['type'] == 'header':
+                self.intro += block['data']['text'] + '\n'
+            elif block['type'] == 'list':
+                for item in block['data']['items']:
+                    self.intro += item + '\n'
     
     def get_entry_as_dict(self)->dict:
         result = {

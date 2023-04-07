@@ -11,7 +11,7 @@ from api_models import *
 from pydantic import parse_obj_as
 
 class OsnovaApiConn:
-	entity_id = 0
+	entity_id = 1
 	"""
 	Класс для соединения с сервисом OsnovaApi (Tjournal, DTF, VC).
 		Данный класс в автоматическом режиме получает набор комментариев на заданный список записей.
@@ -22,10 +22,10 @@ class OsnovaApiConn:
 			Просмотр всех записей, принадлежащих пользователю с токеном 'token'.
 	"""
 
-	def __init__(self, token, place = "dtf"):
+	def __init__(self, token, pretext, bd_id, place = "dtf"):
 		"""Заполнение поля token, инициализация необходимых параметров."""
 		self.__class__.entity_id += 1 #id of bot entity
-		self.osnova_api_con_id = self.__class__.entity_id
+		self.osnova_api_con_id = bd_id
 		self._token = token
 		self._url = f'https://api.{place}.ru/v1.9'
 		self._header = {'X-Device-Token': token}
@@ -34,7 +34,7 @@ class OsnovaApiConn:
 		self.answers_rate = 30
 		self.is_active = False
 		self.active_task = None # Parameter for endless cycle task (request periodic time method)
-		self.pretext = ''
+		self.pretext = pretext
 		self.temperature = 1
 		self.top_p = 1
 		self.model = 'gpt-3.5-turbo'
@@ -416,6 +416,7 @@ class OsnovaApiConn:
 		result['nickname'] = self.user_name
 		result['top_p'] = self.top_p
 		result['model'] = self.model
+		print(result)
 		return result
 	
 	async def run_setup(self):
@@ -449,9 +450,11 @@ class OsnovaApiConn:
 	async def enterance_into_foreign_entry(self, *entry_id_or_ids):
 		# Получаем все комментарии исследуемой записи, выбираем из них часть
 		entry_list = []
-		for entry in entry_id_or_ids:
-			entry = self.get_full_entry(entry_id)
-			entry_list.append((entry, entry.comments))
-		choosen_comments = self.get_n_part_from_new_pool(self.answers_rate, entry_list)
-		self.configure_and_send(choosen_comments, "FROM SINGLE ENTRANCE")
-
+		try:
+			for entry_id in entry_id_or_ids:
+				entry = await self.get_full_entry(entry_id)
+				entry_list.append((entry, entry.comments))
+			choosen_comments = await self.get_n_part_from_new_pool(self.answers_rate, entry_list)
+			await self.configure_and_send(choosen_comments, "FROM SINGLE ENTRANCE")
+		except Exception as e:
+			_error(e)
