@@ -8,6 +8,7 @@ from signalization import _info
 from Comment import CommentTree
 from BotTracker import BotTracker
 import asyncpg
+from api_models import *
 
 serv = FastAPI()
 
@@ -72,13 +73,23 @@ async def get_active():
 		_error(e)
 		return e
 
-@serv.post('/start_bots_from_bd')
-async def start_from_bd():
-    try:
-		if serv.task_tracker is None:
-			
-        
+@serv.get('/get_comment_tree_for_comment/{comment_id}')
+async def get_ct(entry_id:int, comment_id:int, bot_token:str):
+    bot = OsnovaApiConn(token=bot_token, pretext='', bd_id='', place='dtf')
+    entry = await bot.get_full_entry(entry_id)
+    return await entry.comments.make_comment_tree_v2(comment_id)
 
+@serv.get('/get_max_tree/{entry_id}')
+async def get_mt(entry_id:int, bot_token:str):
+    bot = OsnovaApiConn(token=bot_token, pretext='', bd_id='', place='dtf')
+    entry = await bot.get_full_entry(entry_id)
+    all_comments = entry.comments.get_all_comments()
+    all_trees = await asyncio.gather(*[entry.comments.make_comment_tree_v2(comment.id) for comment in all_comments])
+    max_len = all_trees[0]
+    for tree in all_trees:
+        if len(tree) > len(max_len):
+            max_len = tree
+    return max_len
 
 if __name__ == "__main__":
     uvicorn.run("main:serv", port=38000, reload=True)
