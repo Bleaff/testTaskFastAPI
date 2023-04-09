@@ -30,11 +30,9 @@ class Bots(Base):
 async def main():
     async with AsyncSession(async_engine) as async_session:
         try:           
-            stmt = select(Bots).where(Bots.place == 'dtf')
-            items = await async_session.execute(stmt)
-            qresult = items.all()
-            for item in qresult:
-                print(item[0])
+            stmt = select(Bots.id, Bots.token, Pretexts.pretext).where(Bots.pretext_id == Pretexts.id)
+            for item in await async_session.execute(stmt):
+                print(item)
         except Exception as e:
             print(e)
 
