@@ -1,13 +1,9 @@
 import asyncio
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
 from OsnovaApiConnect import OsnovaApiConn
-import asyncio
 import uvicorn
 from signalization import _info
-from Comment import CommentTree
 from BotTracker import BotTracker
-import asyncpg
 from api_models import *
 
 serv = FastAPI()
@@ -32,6 +28,8 @@ serv = FastAPI()
 #         _error(e)
 #     _info('   Startup complete!')
 
+
+
 @serv.get("/get_entry/{entry_id}")
 async def get_entry(entry_id:int, bot_token:str, pretext:str):
     bot = OsnovaApiConn(token=bot_token, pretext=pretext, bd_id=0, place='dtf')
@@ -51,17 +49,6 @@ async def set_to_listen(entry_id:int, bot_id:int): #добавим
     except Exception as e:
         _error(e)
         return e
-@serv.get('/get_bots_db_values')
-async def get_bots_info():
-    try:
-        res = await serv.db_engine.fetch("""
-                                        SELECT bots.id, bots.token, bots.place, pretexts.pretext FROM bots
-                                        LEFT JOIN pretexts on bots.pretext_id=pretexts.id
-                                    """)
-        return [dict(row) for row in res]
-    except Exception as e:
-        _error(e)
-        return None
 
 @serv.get('/get_active_bots')
 async def get_active():

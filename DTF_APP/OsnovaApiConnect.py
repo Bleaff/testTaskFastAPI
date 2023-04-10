@@ -1,7 +1,7 @@
 import requests
 import aiohttp
 import json
-from signalization import _error, _info
+from signalization import _error, _info, _success
 from Comment import Comment, CommentTree
 import asyncio
 import time
@@ -426,10 +426,12 @@ class OsnovaApiConn:
 		"""
 		response = await self.execute_response('/user/me')
 		if not response:
-			_error("An error occurred while retrieving data")
+			return none
+			_error('Bot', self.user_name,"An error occurred while retrieving data")
 		self.user_id = response["result"]['id']
 		self.user_name = response['result']['name']
 		await self.get_all_my_entries()
+		_success('Bot', self.user_name, 'started')
 
 	async def start_my_task(self):
 		if not self.is_active:

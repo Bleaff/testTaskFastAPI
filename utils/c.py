@@ -9,21 +9,7 @@ bd_path = 'postgresql+asyncpg://unlim:0000@127.0.0.1:5432/unlim_ad'
 
 async_engine = create_async_engine(bd_path, pool_pre_ping=True, pool_size=30, max_overflow=30)
 
-Base = declarative_base()
-metadata = Base.metadata
 
-
-class Pretexts(Base):
-    __tablename__ = 'pretexts'
-    id = Column(Integer, primary_key=True, unique=True)
-    pretext = Column(String)
-
-class Bots(Base):
-    __tablename__ = 'bots'
-    id = Column(Integer, primary_key=True, unique=True)
-    token = Column(String)
-    place = Column(Boolean)
-    pretext_id = Column(ForeignKey('pretexts.id'))
 
 
 

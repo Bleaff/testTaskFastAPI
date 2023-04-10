@@ -38,3 +38,4 @@ class UserModel(BaseModel):
 class BotStartUp(BaseModel):
     id : int
 
+
