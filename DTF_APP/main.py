@@ -5,28 +5,13 @@ import uvicorn
 from signalization import _info
 from BotTracker import BotTracker
 from api_models import *
+from multibots_orm_models import Account, Advertising, Instruction, Bot 
 
 serv = FastAPI()
 
-# @serv.on_event("startup")
-# async def shedule_task_loop():
-#     try:
-#         serv.db_engine = await asyncpg.connect(user='unlim', database='unlim_ad', host='127.0.0.1', password='0000') #Здесь стоит поменять подключение к бд
-#         res = await serv.db_engine.fetch("""
-#                                         SELECT bots.id, bots.token, bots.place, pretexts.pretext FROM bots
-#                                         LEFT JOIN pretexts on bots.pretext_id=pretexts.id
-#                                     """)
-#         bot_credits_list = [dict(row) for row in res]
-#         _info(bot_credits_list)
-#         bots = [OsnovaApiConn(credit['token'], pretext=credit['pretext'], bd_id=credit['id'], place=credit['place']) for credit in bot_credits_list]
-#         serv.task_tracker = BotTracker(*bots)
-#         for bot in serv.task_tracker.bots_pool:
-#             await bot.run_setup()
-#         await serv.task_tracker.active_pool_bots()
-#     except Exception as e:
-#         serv.task_tracker = None
-#         _error(e)
-#     _info('   Startup complete!')
+@serv.on_event("startup")
+async def shedule_task_loop():
+
 
 
 
