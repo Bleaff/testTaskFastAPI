@@ -8,10 +8,9 @@ import time
 from random import randint
 from Entry import *
 from api_models import *
-from pydantic import parse_obj_as
+from BD_connection_module import DataBaseConn
 
 class OsnovaApiConn:
-	entity_id = 1
 	"""
 	Класс для соединения с сервисом OsnovaApi (Tjournal, DTF, VC).
 		Данный класс в автоматическом режиме получает набор комментариев на заданный список записей.
@@ -24,8 +23,7 @@ class OsnovaApiConn:
 
 	def __init__(self, token, pretext, bd_id, place = "dtf"):
 		"""Заполнение поля token, инициализация необходимых параметров."""
-		self.__class__.entity_id += 1 #id of bot entity
-		self.osnova_api_con_id = bd_id
+		self.id = bd_id
 		self._token = token
 		self._url = f'https://api.{place}.ru/v1.9'
 		self._header = {'X-Device-Token': token}
@@ -101,7 +99,7 @@ class OsnovaApiConn:
 		try:
 			new_comments_dict = []
 			count = await self.get_updates_count()
-			_info(f"    B#{self.osnova_api_con_id} {self.user_name}:Count of new replies:{count}")
+			_info(f"    B#{self.id} {self.user_name}:Count of new replies:{count}")
 			if not count:
 				return [] 
 			updates_list = await self.get_updates()
@@ -244,8 +242,6 @@ class OsnovaApiConn:
 		"""type - может быть comment/reply/like_up"""
 		data = json_updates['result']
 		updates = {}
-		entries = []
-		comment_to_entry = {}
 
 		for i in range(count):
 			if data[i]['icon'] == type:
@@ -275,8 +271,6 @@ class OsnovaApiConn:
 		for i, pair in enumerate(entry_comment):
 			if not pair[0].marked_comments:
 				continue
-			# print(f'Marked:{pair[0].marked_comments.get_all_comments_id_as_set()}', len(pair[0].marked_comments.get_all_comments_id_as_set()))#DEBUG
-			# print(f'Comments:{pair[1].get_all_comments_id_as_set()}', len(pair[1].get_all_comments_id_as_set()))#DEBUG
 			common_set = pair[0].marked_comments.get_all_comments_id_as_set().union(pair[1].get_all_comments_id_as_set())
 			entry_comment[i] = (pair[0], pair[0].comments.get_comments_by_id(list(common_set)))
 		if not len(entry_comment) and len(entry_reply): #Если нет новых комментариев к записи, но есть ответы, мы отвечаем.
@@ -315,14 +309,14 @@ class OsnovaApiConn:
 		while True:
 			wait_for = randint(20, 45) # Берем рандомное число секунд, через какое время начнут присылаться ответы на комментарии
 			await asyncio.sleep(wait_for)
-			_info(f'    B#{self.osnova_api_con_id} {self.user_name}: Wait for:{wait_for}')
+			_info(f'    B#{self.id} {self.user_name}: Wait for:{wait_for}')
 			updates = await self.update_followed_entries()
 			replies = await self.auto_reply_to_replies()
 			if (updates and  len(updates)) or len(replies):
 				await self.auto_reply_to_comment(updates, replies)
 			
 			else:
-				_info(f'    B#{self.osnova_api_con_id} {self.user_name}: Nothing to update.')
+				_info(f'    B#{self.id} {self.user_name}: Nothing to update.')
 
 	async def post_to_model(self, data, model_url):
 		async with aiohttp.ClientSession() as session: 
@@ -426,8 +420,8 @@ class OsnovaApiConn:
 		"""
 		response = await self.execute_response('/user/me')
 		if not response:
-			return none
 			_error('Bot', self.user_name,"An error occurred while retrieving data")
+			return None
 		self.user_id = response["result"]['id']
 		self.user_name = response['result']['name']
 		await self.get_all_my_entries()
@@ -441,11 +435,11 @@ class OsnovaApiConn:
 	async def cancel_my_task(self):
 		if self.is_active:
 			status = self.active_task.cancel()
-			_log(f'Bot #{self.osnova_api_con_id} has canceled his task status:{status}')
+			_info(f'Bot #{self.id} has canceled his task status:{status}')
 			while True:
 				await asyncio.sleep(0.3)
 				if self.active_task.cancelled():
-					_log(f'Bot #{self.osnova_api_con_id} has canceled his task status:{status}')
+					_info(f'Bot #{self.id} has canceled his task status:{status}')
 					break
 			self.is_active = False
 			self.active_task = None

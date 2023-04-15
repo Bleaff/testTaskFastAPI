@@ -3,7 +3,7 @@ import asyncio
 import uvicorn
 from fastapi import FastAPI
 from OsnovaApiConnect import OsnovaApiConn
-from signalization import _info
+from signalization import _info, _error
 from BotTracker import BotTracker
 from api_models import *
 from dotenv import load_dotenv, find_dotenv
@@ -18,11 +18,8 @@ serv = FastAPI()
 #FIXME поправить отправку сообщений с учетом токенов
 @serv.on_event("startup")
 async def shedule_task_loop():
-    serv.con_str = os.environ.get("BD_CON_STRING")
     serv.db_conn = DataBaseConn(serv.con_str)
     running_bots = await serv.db_conn.get_all_active()
-
-
 
 @serv.get("/get_entry/{entry_id}")
 async def get_entry(entry_id:int, bot_token:str, pretext:str):

@@ -3,11 +3,15 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, AsyncEngin
 from sqlalchemy import select
 import sqlalchemy
 import multibots_orm_models
+import os
+from dotenv import load_dotenv, find_dotenv
+
 
 class DataBaseConn:
-    def __init__(self, bd_con_string):
-        self.async_engine = create_async_engine(bd_path, pool_pre_ping=True)
-    
+    def __init__(self):
+        load_dotenv(find_dotenv())
+        self.async_engine = create_async_engine(os.environ.get("BD_CON_STRING"), pool_pre_ping=True)
+
     async def get_full_info_bots(self, ids:list[int])->list[dict]:
         async with AsyncSession(self.async_engine) as async_session:
             stmt = select(multibots_orm_models.Bot.id, 
@@ -66,3 +70,11 @@ class DataBaseConn:
                        'account_id': item[8], 'account_dtf': item[9]}
                 ress.append(bot)
             return ress
+
+    async def get_rest_token(self, id_advertising:int)->int:
+        async with AsyncSession(self.async_engine) as async_session:
+            stmt = select(multibots_orm_models.Advertising).where(multibots_orm_models.Advertising.id == id_advertising)
+            items = await async_session.execute(stmt)
+            item = items.scalars().first()
+            return item.balance
+        
