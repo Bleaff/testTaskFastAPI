@@ -5,6 +5,7 @@ import sqlalchemy
 import multibots_orm_models
 import os
 from dotenv import load_dotenv, find_dotenv
+from signalization import _error
 
 
 class DataBaseConn:
@@ -75,6 +76,13 @@ class DataBaseConn:
         async with AsyncSession(self.async_engine) as async_session:
             stmt = select(multibots_orm_models.Advertising).where(multibots_orm_models.Advertising.id == id_advertising)
             items = await async_session.execute(stmt)
-            item = items.scalars().first()
-            return item.balance
+            try :
+                item = items.scalars().first()
+                return item.balance
+            except AttributeError as ae:
+                _error("Missing the statement in db")
+                return 0
+            except Exception as e:
+                _error("Missing the statement in db")
+
         

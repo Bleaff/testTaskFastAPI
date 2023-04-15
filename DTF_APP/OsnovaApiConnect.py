@@ -21,12 +21,13 @@ class OsnovaApiConn:
 			Просмотр всех записей, принадлежащих пользователю с токеном 'token'.
 	"""
 
-	def __init__(self, token, pretext, bd_id, place = "dtf"):
+	def __init__(self, token, pretext, bd_id, advertising_id, place = "dtf"):
 		"""Заполнение поля token, инициализация необходимых параметров."""
 		self.id = bd_id
 		self._token = token
 		self._url = f'https://api.{place}.ru/v1.9'
 		self._header = {'X-Device-Token': token}
+		self.advertising_id = advertising_id
 		self.semaphore = asyncio.Semaphore(3)
 		self.entries = []
 		self.answers_rate = 30
@@ -37,6 +38,7 @@ class OsnovaApiConn:
 		self.top_p = 1
 		self.model = 'gpt-3.5-turbo'
 		self.model_url = "http://0.0.0.0:35000/generate_comment"
+		self.db_conn = DataBaseConn()
 
 	async def execute_response(self, query, repeat=False, query_path = ""):
 		"""С использованием семафора ограничиваем время выполнения последовательных задач до минимального времени 0.33 сек на запрос"""
@@ -215,7 +217,7 @@ class OsnovaApiConn:
 			ВНИМАНИЕ:Entry_id является обязательным параметром, даже при ответе на комментарий.
 		"""
 		template = {
-  					"id": f"{entry_id}",
+  					"id": f"{int(entry_id)}",
   					"text": f"{msg}",
   					"reply_to": f"{reply_to}",
   					"attachments": "[]"
@@ -296,12 +298,17 @@ class OsnovaApiConn:
 		"""Метод собирает в один контейнер в необходимом формате данные, отправляет их и принимает обратно.
 			Также здесь происходит ответ на полученные ответы."""
 		data = await self.send_to_model(entry_to_comtree) #Формируем данные для отправки в модель
+		rest_tokens = await self.db_conn.get_rest_token(self.advertising_id)
+		if rest_tokens <= 0:
+			_info(f"Bot #{self.id}: Bot becomes inactive due to low token balance!")
+			self.cancel_my_task()
 		response = await self.post_to_model(data, self.model_url) #Получили ответ от модели, далее отвечаем на комменты
+		#FIXME add if resp["replies"][i]["reply"] != 'ERROR' - удалять из ответов и не списывать токен
 		if response is None:
 			_error("Something went wrong!")
-		for entry in response['entries']: #Ответили на полученные комменты
+		for entry in response['replies']: #Ответили на полученные комменты
 			for answer in entry['CommentTrees']:
-				await self.reply_to_comment(entry["entry_id"], answer['comment_id'], answer['Resp'])
+				await self.reply_to_comment(entry["entry_id"], answer['comment_id'], answer['reply'])
 
 	async def request_periodic_time(self):
 		"""Метод с заданной периодичностью посылает запросы на osnovaAPI, для обновления данных об отслеживаемых записях. 
